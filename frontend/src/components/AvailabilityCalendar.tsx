@@ -1,0 +1,577 @@
+// src/components/AvailabilityCalendar.tsx
+import React, { useEffect, useState } from 'react';
+import Calendar from 'react-calendar';
+import 'react-calendar/dist/Calendar.css';
+import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+
+type EventItem = {
+  uid: string | null;
+  summary: string | null;
+  start: string | null;
+  end: string | null;
+};
+
+const DEFAULT_PRICE_PER_NIGHT = 149; // € / nuit par défaut
+
+// Définition des prix spéciaux par date (inclusives)
+const SPECIAL_PRICES = [
+  { start: '2025-12-24', end: '2025-12-26', price: 250 }, // Noël 2025
+  { start: '2026-02-14', end: '2026-02-14', price: 180 }, // Saint-Valentin 2026
+  { start: '2025-12-31', end: '2026-01-01', price: 250 }, // Nouvel an
+  { start: '2025-12-16', end: '2025-12-17', price: 0.01 } // test
+  // Ajoute d'autres périodes ici
+];
+
+const TARGET_EMAIL = 'thetinyhome73@gmail.com';
+
+export default function AvailabilityCalendar() {
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [disabledSet, setDisabledSet] = useState<Set<string>>(new Set());
+  const [showRulesModal, setShowRulesModal] = useState(false);
+
+  const [range, setRange] = useState<Date[] | null>(null);
+
+  // Form fields
+  const [nom, setNom] = useState('');
+  const [prenom, setPrenom] = useState('');
+  const [tel, setTel] = useState('');
+  const [email, setEmail] = useState('');
+
+  const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchEvents() {
+      setLoading(true);
+      setError(null);
+      try {
+        const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000';
+        const res = await fetch(`${API_BASE}/api/availability`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        const ev: EventItem[] = json.events || [];
+        setEvents(ev);
+
+        const s = new Set<string>();
+        for (const e of ev) {
+          if (!e.start || !e.end) continue;
+          const start = new Date(e.start);
+          const end = new Date(e.end);
+          for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+            s.add(dateToYMD(new Date(d)));
+          }
+        }
+        setDisabledSet(s);
+      } catch (err: any) {
+        setError(err.message || 'Erreur inconnue');
+        setDisabledSet(new Set());
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchEvents();
+  }, []);
+
+  function dateToYMD(d: Date) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function tileDisabled({ date, view }: { date: Date; view: string }) {
+    if (view !== 'month') return false;
+    return disabledSet.has(dateToYMD(date));
+  }
+
+  function formatDate(d: Date) {
+    return d.toLocaleDateString('fr-FR');
+  }
+
+  // calcule nuits, prix brut, remise et prix final
+  function calcNightsAndPrice(range: Date[] | null) {
+    if (!range || range.length !== 2 || !range[0] || !range[1]) {
+      return { nights: 0, price: 0, discountPercent: 0, discountAmount: 0, finalPrice: 0 };
+    }
+    const start = new Date(range[0]);
+    const end = new Date(range[1]);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const diff = Math.round((end.getTime() - start.getTime()) / msPerDay);
+    const nights = diff > 0 ? diff : 0;
+
+    let totalPrice = 0;
+    if (nights > 0) {
+      for (let d = new Date(start); d.getTime() < end.getTime(); d.setDate(d.getDate() + 1)) {
+        let priceForThisNight = DEFAULT_PRICE_PER_NIGHT;
+
+        for (const specialPrice of SPECIAL_PRICES) {
+          const specialStart = new Date(specialPrice.start);
+          const specialEnd = new Date(specialPrice.end);
+          specialStart.setHours(0, 0, 0, 0);
+          specialEnd.setHours(0, 0, 0, 0);
+
+          if (d.getTime() >= specialStart.getTime() && d.getTime() <= specialEnd.getTime()) {
+            priceForThisNight = specialPrice.price;
+            break;
+          }
+        }
+        totalPrice += priceForThisNight;
+      }
+    }
+
+    // Remises selon durée
+    let discountPercent = 0;
+    if (nights >= 7) discountPercent = 15;
+    else if (nights >= 3) discountPercent = 10;
+    else discountPercent = 0;
+
+    const discountAmountCents = Math.round((totalPrice * discountPercent / 100) * 100); // en centimes
+    const discountAmountFinal = discountAmountCents / 100; // en euros
+
+    const finalPrice = Math.round((totalPrice - discountAmountFinal) * 100) / 100;
+
+    return {
+      nights,
+      price: Math.round(totalPrice * 100) / 100,
+      discountPercent,
+      discountAmount: discountAmountFinal,
+      finalPrice,
+    };
+  }
+
+  const { nights, price, discountPercent, discountAmount, finalPrice } = calcNightsAndPrice(range);
+
+  // ✅ VALIDATION : formulaire complet ?
+  const [isRulesAccepted, setIsRulesAccepted] = useState(false);
+  const isFormValid =
+    nom.trim() !== '' &&
+    prenom.trim() !== '' &&
+    email.trim() !== '' &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) &&
+    tel.trim() !== '' &&
+    range !== null &&
+    range.length === 2 &&
+    nights > 0 &&
+    isRulesAccepted;
+
+  function validateForm() {
+    setFormError(null);
+    if (!nom.trim()) return setFormError('Le nom est requis.');
+    if (!prenom.trim()) return setFormError('Le prénom est requis.');
+    if (!email.trim()) return setFormError("L'adresse mail est requise.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setFormError('Adresse mail invalide.');
+    if (!tel.trim()) return setFormError('Le numéro de téléphone est requis.');
+    if (!range || range.length !== 2 || nights <= 0) return setFormError('Veuillez sélectionner une plage de dates valide (au moins 1 nuit).');
+    if (!isRulesAccepted) return setFormError('Vous devez accepter le règlement intérieur pour réserver.');
+    if (range && range.length === 2) {
+      const s = new Date(range[0]);
+      const e = new Date(range[1]);
+      for (let d = new Date(s); d < e; d.setDate(d.getDate() + 1)) {
+        if (disabledSet.has(dateToYMD(new Date(d)))) {
+          return setFormError('La plage sélectionnée contient des dates indisponibles. Choisissez une autre plage.');
+        }
+      }
+    }
+    return true;
+  }
+
+  function buildMailBody() {
+    if (!range || range.length !== 2) return '';
+    const startStr = formatDate(range[0]);
+    const endStr = formatDate(range[1]);
+    return [
+      'Demande de réservation - The Tiny Home',
+      '',
+      `Nom : ${nom}`,
+      `Prénom : ${prenom}`,
+      `Téléphone : ${tel}`,
+      `Adresse e-mail : ${email}`,
+      '',
+      `Arrivée : ${startStr}`,
+      `Départ : ${endStr}`,
+      `Nuits : ${nights}`,
+      `Prix total (avant remise) : ${price.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}`,
+      discountPercent > 0 ? `Remise appliquée : ${discountPercent}% (-${discountAmount.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })})` : 'Remise appliquée : —',
+      `Prix total à payer : ${finalPrice.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}`,
+      '',
+      'Merci de revenir vers moi au plus vite pour confirmer la réservation.',
+    ].join('\n');
+  }
+
+  function buildMailtoLink() {
+    const subject = `Demande de réservation - The Tiny Home (${prenom} ${nom})`;
+    const body = buildMailBody();
+    const params = new URLSearchParams({
+      subject,
+      body,
+    });
+    return `mailto:${TARGET_EMAIL}?${params.toString()}`;
+  }
+
+  function openMailClient() {
+    setFormError(null);
+    if (!validateForm()) return;
+    const mailto = buildMailtoLink();
+    window.location.href = mailto;
+  }
+
+  // Détermine le prix par nuit affiché (prix de la première nuit)
+  const displayedPricePerNight = (() => {
+    if (range && range.length === 2) {
+      const startDay = new Date(range[0]);
+      startDay.setHours(0, 0, 0, 0);
+      for (const specialPrice of SPECIAL_PRICES) {
+        const specialStart = new Date(specialPrice.start);
+        const specialEnd = new Date(specialPrice.end);
+        specialStart.setHours(0, 0, 0, 0);
+        specialEnd.setHours(0, 0, 0, 0);
+        if (startDay.getTime() >= specialStart.getTime() && startDay.getTime() <= specialEnd.getTime()) {
+          return specialPrice.price;
+        }
+      }
+    }
+    return DEFAULT_PRICE_PER_NIGHT;
+  })();
+
+  return (
+    <section id="availability" className="py-12 bg-white">
+      <div className="max-w-3xl mx-auto px-4">
+        <h3 className="text-2xl md:text-3xl font-bold mb-6 text-center">
+          Calendrier &amp; réservation
+        </h3>
+
+        {loading && <p className="text-center">Chargement…</p>}
+        {error && <p className="text-red-500 text-center">Erreur (availability) : {error}</p>}
+
+        <div className="flex justify-center mb-6">
+          <div className="w-full max-w-md">
+            <Calendar
+              className="mx-auto w-full"
+              tileDisabled={tileDisabled}
+              selectRange={true}
+              locale="fr-FR"
+              onChange={(val: Date | Date[] | null) => {
+                if (Array.isArray(val)) setRange(val as Date[]);
+                else if (val instanceof Date) setRange([val]);
+                else setRange(null);
+              }}
+              value={range as any}
+            />
+          </div>
+        </div>
+
+        <div className="mb-6 text-center">
+          <p className="text-sm text-gray-600">
+            Sélectionnez vos dates d&apos;arrivée et de départ sur le calendrier. 
+            Les jours gris sont déjà réservés.
+          </p>
+        </div>
+
+        <form className="bg-gray-50 p-6 rounded-md shadow-sm" onSubmit={(e) => e.preventDefault()}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Nom</label>
+              <input type="text" value={nom} onChange={(e) => setNom(e.target.value)} className="mt-1 block w-full border rounded-md px-3 py-2" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Prénom</label>
+              <input type="text" value={prenom} onChange={(e) => setPrenom(e.target.value)} className="mt-1 block w-full border rounded-md px-3 py-2" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Téléphone</label>
+              <input type="tel" value={tel} onChange={(e) => setTel(e.target.value)} className="mt-1 block w-full border rounded-md px-3 py-2" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Adresse mail</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 block w-full border rounded-md px-3 py-2" />
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Date d&apos;arrivée</label>
+              <input
+                readOnly
+                value={range && range.length === 2 ? formatDate(range[0]) : ''}
+                placeholder="Sélectionnez sur le calendrier"
+                className="mt-1 block w-full border rounded-md px-3 py-2 bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Date de départ</label>
+              <input
+                readOnly
+                value={range && range.length === 2 ? formatDate(range[1]) : ''}
+                placeholder="Sélectionnez sur le calendrier"
+                className="mt-1 block w-full border rounded-md px-3 py-2 bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Prix total</label>
+              <input
+                readOnly
+                value={nights > 0 ? finalPrice.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }) : '—'}
+                className="mt-1 block w-full border rounded-md px-3 py-2 bg-white"
+              />
+            </div>
+          </div>
+        
+          {formError && <p className="mt-4 text-red-500">{formError}</p>}
+
+          {/* ✅ Message d'aide si formulaire incomplet */}
+          {!isFormValid && nights > 0 && (
+            <p className="mt-4 text-orange-600 text-sm font-medium">
+              ⚠️ Merci de remplir toutes vos informations (nom, prénom, email, téléphone et de valider le règlement) avant de procéder au paiement.
+            </p>
+          )}
+
+          {/* ✅ Case à cocher : règlement intérieur */}
+          <div className="mt-4 flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <input
+              id="rules-accepted"
+              type="checkbox"
+              checked={isRulesAccepted}
+              onChange={(e) => setIsRulesAccepted(e.target.checked)}
+              className="mt-1 h-4 w-4 accent-blue-600"
+            />
+            <label htmlFor="rules-accepted" className="text-sm text-gray-800">
+              J&apos;ai lu et j&apos;accepte le{' '}
+              <button
+                type="button"
+                onClick={() => setShowRulesModal(true)}
+                className="font-semibold text-blue-600 underline hover:text-blue-800"
+              >
+                règlement intérieur *
+              </button>
+            </label>
+          </div>
+
+          {(() => {
+            const AIRBNB_LINK = 'https://www.airbnb.fr/rooms/746228202767512240?guests=1&adults=1&s=67&unique_share_id=d62985eb-ed51-4f76-98c3-fa9363f1486b';
+            const airbnbApproxPrice = Math.round(finalPrice * 1.2 * 100) / 100; // ~20% plus cher
+            const airbnbPriceStr = airbnbApproxPrice.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+
+            return (
+              <div>
+                <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Bouton PayPal */}
+                  <PayPalScriptProvider options={{ "client-id": import.meta.env.VITE_PAYPAL_CLIENT_ID, currency: "EUR" }}>
+                    <div className="w-full flex justify-center">
+                      <div className={`${!isFormValid ? 'opacity-50 pointer-events-none' : ''}`}>
+                        <PayPalButtons
+                          style={{ layout: "vertical", color: "blue", shape: "rect", label: "paypal" }}
+                          disabled={!isFormValid}
+                          forceReRender={[finalPrice, nights, isFormValid]}
+                          createOrder={(data, actions) => {
+                            if (!isFormValid) {
+                              alert('Merci de remplir toutes vos informations avant de payer.');
+                              return Promise.reject();
+                            }
+                            return actions.order.create({
+                              purchase_units: [
+                                {
+                                  amount: {
+                                    value: finalPrice.toFixed(2),
+                                    currency_code: "EUR",
+                                  },
+                                  description: `Séjour The Tiny Home - ${nights} nuit(s)`,
+                                },
+                              ],
+                              intent: 'CAPTURE'
+                            });
+                          }}
+                          onApprove={async (data, actions) => {
+                            console.log('onApprove déclenché avec orderID:', data.orderID);
+                            if (!actions) return;
+
+                            try {
+                              // Capture côté client
+                              const order = await actions.order!.capture();
+                              console.log('Paiement capturé (client) :', order);
+
+                              // Normaliser range si besoin
+                              const normalizedRange = Array.isArray(range) && range.length === 2
+                                ? [
+                                    (range[0] instanceof Date) ? range[0].toISOString() : new Date(range[0]).toISOString(),
+                                    (range[1] instanceof Date) ? range[1].toISOString() : new Date(range[1]).toISOString()
+                                  ]
+                                : range;
+
+                              const reservationData = {
+                                nom: typeof nom !== 'undefined' ? nom : '',
+                                prenom: typeof prenom !== 'undefined' ? prenom : '',
+                                tel: typeof tel !== 'undefined' ? tel : '',
+                                email: typeof email !== 'undefined' ? email : '',
+                                range: normalizedRange,
+                                nights: nights || 0,
+                                finalPrice: finalPrice || 0,
+                              };
+
+                              console.log('Avant fetch -> envoi au backend :', { orderId: data.orderID, reservationData });
+
+                              // APPEL FETCH : vérifie que cette ligne existe bien chez toi
+                              const res = await fetch('http://localhost:4000/api/paypal/complete', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ orderId: data.orderID, reservationData }),
+                              }).catch(err => {
+                                console.error('Erreur fetch (catch) :', err);
+                                throw err;
+                              });
+
+                              console.log('Fetch envoyé, status:', res.status, 'ok:', res.ok);
+
+                              // parser la réponse
+                              const json = await res.json().catch(() => {
+                                console.warn('Impossible de parser JSON réponse backend');
+                                return null;
+                              });
+                              console.log('Réponse JSON backend :', json);
+
+                              if (res.ok && json && json.success) {
+                                alert(`Paiement confirmé et réservation enregistrée. Merci, ${order.payer?.name?.given_name ?? prenom} 🎉`);
+                                // si tu as une fonction fetchAvailability(), appelle-la ici pour recharger le calendrier
+                                // await fetchAvailability();
+                              } else {
+                                alert('Le paiement est fait mais l\'enregistrement a échoué. Voir console backend/frontend.');
+                              }
+                            } catch (err) {
+                              console.error('Erreur dans onApprove (try/catch) :', err);
+                              alert('Erreur lors du traitement du paiement. Vérifier la console et le serveur.');
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </PayPalScriptProvider>
+
+                  {/* Bouton Airbnb (rose) */}
+                  <a
+                    href={isFormValid ? AIRBNB_LINK : undefined}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    role="button"
+                    aria-disabled={!isFormValid}
+                    onClick={(e) => {
+                      if (!isFormValid) {
+                        e.preventDefault();
+                        alert('Merci de remplir toutes vos informations avant de réserver sur Airbnb.');
+                      }
+                    }}
+                    className={`block text-white text-center py-3 px-4 rounded-lg font-semibold transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 ${
+                      !isFormValid ? 'opacity-50 pointer-events-none' : ''
+                    }`}
+                    style={{ backgroundColor: '#FF5A5F' }} // couleur rose Airbnb
+                  >
+                    {isFormValid ? (
+                      <>
+                        🎒 Réserver sur Airbnb — <span className="font-bold">≈ {airbnbPriceStr}</span>
+                        <span className="block text-xs font-normal mt-1">Inclus les frais plateforme</span>
+                      </>
+                    ) : (
+                      'Remplissez le formulaire'
+                    )}
+                  </a>
+
+                  {/* Bouton Mail */}
+                  <button
+                    type="button"
+                    onClick={openMailClient}
+                    className="bg-green-600 text-white text-center py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none"
+                    disabled={!isFormValid}
+                  >
+                    ✉️ Contacter par email avec formulaire
+                  </button>
+                </div>
+
+                {/* Info frais + détails prix */}
+                <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="text-sm text-gray-700">
+                    <p className="font-semibold mb-2">📊 Détails du séjour :</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+                      <span>Prix/nuit : <strong>{displayedPricePerNight.toLocaleString('fr-FR')}€</strong></span>
+                      <span>Nuits : <strong>{nights}</strong></span>
+                      {discountPercent > 0 && (
+                        <span>Remise : <strong>{discountPercent}%</strong></span>
+                      )}
+                    </div>
+                    {nights > 0 && (
+                      <p className="mt-2 text-xs text-yellow-800 font-medium">
+                        ℹ️ * Le tarif affiché sur Airbnb est à titre indicatif incluant les frais de la plateforme.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </form>
+      </div>
+
+      {/* Modal Règlement Intérieur */}
+      {showRulesModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowRulesModal(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Bouton fermer */}
+            <button
+              onClick={() => setShowRulesModal(false)}
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 transition"
+              aria-label="Fermer"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Contenu */}
+            <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
+              ⚠️ Règlement intérieur
+            </h3>
+            <ul className="list-disc pl-5 space-y-2 text-sm text-gray-800">
+              <li>Aucune fête ni événement ne sont autorisés.</li>
+              <li>Merci de respecter le calme après 22h sur la terrasse du SPA.</li>
+              <li>Pas d&apos;invités non prévus.</li>
+              <li>La vaisselle doit être propre et rangée (un lave-vaisselle est à votre disposition).</li>
+              <li>Enlever vos chaussures à l&apos;intérieur.</li>
+              <li>Interdiction de fumer dans le logement.</li>
+              <li>Les animaux de compagnie ne sont pas admis.</li>
+              <li>En cas de perte des clés : indemnisation de 25 €.</li>
+              <li>Respectez le linge de maison (draps et serviettes inclus) : indemnisation de 50 € en cas de perte ou de détérioration.</li>
+              <li>Un nettoyage supplémentaire entraînera une indemnisation de 150 €.</li>
+              <li>Poubelles non jetées : indemnisation de 15 € (le conteneur se trouve en bas de la rue, près de la route principale).</li>
+              <li>En cas de dégâts ou de non-respect du règlement intérieur : indemnisation de 190 €.</li>
+            </ul>
+            <p className="mt-4 text-sm text-gray-900 font-medium">
+              ❤️ Merci pour votre compréhension et votre coopération.
+            </p>
+
+            {/* Bouton fermer en bas */}
+            <div className="mt-6 flex justify-center">
+              <button
+                onClick={() => setShowRulesModal(false)}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
