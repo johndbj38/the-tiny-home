@@ -4,7 +4,7 @@ const express = require('express');
 const ical = require('node-ical');
 const cors = require('cors');
 const paypal = require('@paypal/checkout-server-sdk');
-const sgMail = require('@sendgrid/mail'); // <-- AJOUT SendGrid
+const sgMail = require('@sendgrid/mail');
 const crypto = require('crypto');
 const https = require('https');
 
@@ -291,13 +291,31 @@ app.post('/api/paypal/complete', async (req, res) => {
       return res.status(400).json({ error: 'Paiement non complété' });
     }
 
-    const rRange =
-      reservationData.range && reservationData.range.length === 2
-        ? [
-            new Date(reservationData.range[0]).toISOString(),
-            new Date(reservationData.range[1]).toISOString()
-          ]
-        : null;
+    // ---------- CORRECTION : Gestion des dates sans décalage de fuseau ----------
+    let rRange = null;
+    let startStr = '';
+    let endStr = '';
+
+    if (reservationData.range && reservationData.range.length === 2) {
+      const startRaw = reservationData.range[0]; // ex: "2025-01-16T00:00:00.000Z"
+      const endRaw = reservationData.range[1];   // ex: "2025-01-17T00:00:00.000Z"
+
+      // On extrait juste la partie AAAA-MM-JJ
+      const startDatePart = String(startRaw).slice(0, 10); // "2025-01-16"
+      const endDatePart = String(endRaw).slice(0, 10);     // "2025-01-17"
+
+      // On stocke ça comme ISO "jour" (sans dépendre du fuseau)
+      rRange = [startDatePart, endDatePart];
+
+      // Petite fonction de formatage "JJ/MM/AAAA"
+      function formatFR(yyyyMmDd) {
+        const [y, m, d] = yyyyMmDd.split('-');
+        return `${d}/${m}/${y}`;
+      }
+
+      startStr = formatFR(startDatePart);
+      endStr = formatFR(endDatePart);
+    }
 
     const saved = {
       orderId,
@@ -318,7 +336,7 @@ app.post('/api/paypal/complete', async (req, res) => {
 
     console.log('Réservation sauvegardée en mémoire:', saved);
 
-    // ---------- Envoi email via SendGrid (remplace Nodemailer) ----------
+    // ---------- Envoi email via SendGrid ----------
     if (!SENDGRID_API_KEY) {
       console.warn('SENDGRID_API_KEY non configuré : pas d\'envoi de mail.');
       return res.json({
@@ -326,13 +344,6 @@ app.post('/api/paypal/complete', async (req, res) => {
         message: 'Réservation enregistrée (mail non envoyé : SendGrid non configuré).'
       });
     }
-
-    const startStr = rRange
-      ? new Date(rRange[0]).toLocaleDateString('fr-FR')
-      : '';
-    const endStr = rRange
-      ? new Date(rRange[1]).toLocaleDateString('fr-FR')
-      : '';
 
     // Email 1 : pour le propriétaire
     const ownerEmail = {
