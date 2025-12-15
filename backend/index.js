@@ -255,6 +255,7 @@ app.get('/api/availability', async (req, res) => {
 app.post('/api/paypal/complete', async (req, res) => {
   console.log('Requête reçue sur /api/paypal/complete avec body:', req.body);
   const { orderId, reservationData } = req.body;
+  console.log('reservationData.range reçu :', reservationData.range);
 
   if (!orderId || !reservationData) {
     return res
