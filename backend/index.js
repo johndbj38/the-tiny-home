@@ -292,18 +292,27 @@ app.post('/api/paypal/complete', async (req, res) => {
       return res.status(400).json({ error: 'Paiement non complété' });
     }
 
-   // ---------- CORRECTION : Gestion des dates sans décalage de fuseau ----------
+// ---------- CORRECTION : Gestion des dates sans décalage de fuseau ----------
     let rRange = null;
     let startStr = '';
     let endStr = '';
 
     if (reservationData.range && reservationData.range.length === 2) {
-      const startRaw = reservationData.range[0]; // ex: "2025-01-16T00:00:00.000Z"
-      const endRaw = reservationData.range[1];   // ex: "2025-01-17T00:00:00.000Z"
+      const startRaw = reservationData.range[0]; // ex: "2025-12-15T23:00:00.000Z"
+      const endRaw = reservationData.range[1];   // ex: "2025-12-17T22:59:59.999Z"
 
-      // On extrait juste la partie AAAA-MM-JJ
-      const startDatePart = String(startRaw).slice(0, 10); // "2025-01-16"
-      const endDatePart = String(endRaw).slice(0, 10);     // "2025-01-17"
+      // --- NOUVELLE LOGIQUE POUR startDatePart ---
+      // Crée un objet Date à partir de la chaîne UTC
+      const startDateObj = new Date(startRaw);
+      // Extrait les composants de date en heure locale
+      const year = startDateObj.getFullYear();
+      const month = (startDateObj.getMonth() + 1).toString().padStart(2, '0'); // Mois de 0 à 11
+      const day = startDateObj.getDate().toString().padStart(2, '0');
+      
+      const startDatePart = `${year}-${month}-${day}`; // Format AAAA-MM-JJ local
+
+      // Pour endDatePart, on peut garder la logique simple car le décalage n'est pas un problème pour la date de fin
+      const endDatePart = String(endRaw).slice(0, 10);     // "2025-12-17"
 
       // On stocke ça comme ISO "jour" (sans dépendre du fuseau)
       rRange = [startDatePart, endDatePart];
@@ -317,6 +326,7 @@ app.post('/api/paypal/complete', async (req, res) => {
       startStr = formatFR(startDatePart);
       endStr = formatFR(endDatePart);
     }
+    // ---------- FIN CORRECTION DATES ----------
 
     const saved = {
       orderId,
