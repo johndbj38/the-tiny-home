@@ -4,7 +4,7 @@ const express = require('express');
 const ical = require('node-ical');
 const cors = require('cors');
 const paypal = require('@paypal/checkout-server-sdk');
-const nodemailer = require('nodemailer');
+const sgMail = require('@sendgrid/mail'); // <-- AJOUT SendGrid
 const crypto = require('crypto');
 const https = require('https');
 
@@ -18,7 +18,20 @@ if (!ICAL_URL) {
 }
 
 app.use(cors());
-app.use(express.json()); // pour lire le body JSON
+app.use(express.json());
+
+// --------------------
+// Configuration SendGrid
+// --------------------
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
+const EMAIL_FROM = process.env.EMAIL_FROM || 'thetinyhome73@gmail.com';
+
+if (SENDGRID_API_KEY) {
+  sgMail.setApiKey(SENDGRID_API_KEY);
+  console.log('SendGrid configuré avec succès');
+} else {
+  console.warn('SENDGRID_API_KEY non défini : les emails ne seront pas envoyés');
+}
 
 // --------------------
 // Configuration PayPal
@@ -30,7 +43,6 @@ const clientSecretLive = process.env.PAYPAL_CLIENT_SECRET_LIVE;
 
 // ---------- Fonctions utilitaires PayPal SANS le SDK ----------
 
-// Choix auto sandbox / live
 const isLivePaypal =
   process.env.NODE_ENV === 'production' &&
   clientIdLive &&
@@ -43,7 +55,6 @@ const PAYPAL_API_HOST = isLivePaypal
 const PAYPAL_CLIENT_ID = isLivePaypal ? clientIdLive : clientIdSandbox;
 const PAYPAL_CLIENT_SECRET = isLivePaypal ? clientSecretLive : clientSecretSandbox;
 
-// Récupère un access_token PayPal via OAuth2 client_credentials
 function paypalGetAccessToken() {
   return new Promise((resolve, reject) => {
     if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET) {
@@ -98,7 +109,6 @@ function paypalGetAccessToken() {
   });
 }
 
-// Récupère les infos d’une commande /v2/checkout/orders/{orderId}
 function paypalGetOrder(orderId) {
   return new Promise((resolve, reject) => {
     paypalGetAccessToken()
@@ -110,7 +120,7 @@ function paypalGetOrder(orderId) {
           headers: {
             Authorization: `Bearer ${token}`
           },
-          timeout: 60000
+          timeout: 30000
         };
 
         const req = https.request(opts, res => {
@@ -133,8 +143,6 @@ function paypalGetOrder(orderId) {
   });
 }
 
-
-// Choix environment : si NODE_ENV === 'production' et live keys présentes -> Live, sinon Sandbox
 let paypalClient;
 try {
   if (process.env.NODE_ENV === 'production' && clientIdLive && clientSecretLive) {
@@ -143,8 +151,8 @@ try {
     console.log('PayPal: environnement LIVE utilisé');
   } else if (clientIdSandbox && clientSecretSandbox) {
     const environment = new paypal.core.SandboxEnvironment(clientIdSandbox, clientSecretSandbox);
-    paypalClient = new paypal.core.PayPalHttpClient(environment, { // <-- MODIFICATION ICI
-    timeout: 60000 // Augmente le timeout à 30 secondes
+    paypalClient = new paypal.core.PayPalHttpClient(environment, {
+      timeout: 60000
     });
     console.log('PayPal: environnement SANDBOX utilisé');
   } else {
@@ -157,15 +165,14 @@ try {
 // --------------------
 // Stockage (mémoire)
 // --------------------
-// Remplace par une vraie DB pour production
 const reservations = [];
 
 // --------------------
-// Cache ICS (existait déjà)
+// Cache ICS
 // --------------------
 let cache = {
   ts: 0,
-  ttlMs: 15 * 60 * 1000, // 15 minutes
+  ttlMs: 15 * 60 * 1000,
   data: null
 };
 
@@ -200,10 +207,8 @@ function parseEvents(icsData) {
   return events;
 }
 
-// Convertit les réservations internes en "events" utilisables par le frontend
 function reservationsToEvents() {
   return reservations.map((r) => {
-    // r.range peut être des chaînes ISO ou des dates — on normalise
     const start = new Date(r.range[0]);
     const end = new Date(r.range[1]);
     return {
@@ -224,7 +229,6 @@ app.get('/api/availability', async (req, res) => {
   try {
     const now = Date.now();
     if (cache.data && (now - cache.ts) < cache.ttlMs) {
-      // on renvoie cache + réservations locales
       const merged = [...cache.data, ...reservationsToEvents()];
       merged.sort((a, b) => new Date(a.start) - new Date(b.start));
       return res.json({ source: 'cache', events: merged });
@@ -244,6 +248,7 @@ app.get('/api/availability', async (req, res) => {
     res.status(500).json({ error: 'Impossible de récupérer ou parser le calendrier' });
   }
 });
+
 // --------------------
 // Route : validation PayPal + enregistrement + mail
 // --------------------
@@ -286,7 +291,6 @@ app.post('/api/paypal/complete', async (req, res) => {
       return res.status(400).json({ error: 'Paiement non complété' });
     }
 
-    // Normaliser la plage de dates
     const rRange =
       reservationData.range && reservationData.range.length === 2
         ? [
@@ -309,40 +313,19 @@ app.post('/api/paypal/complete', async (req, res) => {
       createTime: order.create_time || new Date().toISOString()
     };
 
-    // Enregistrer en mémoire
     reservations.push(saved);
-    // Invalider le cache ICS
     cache.ts = 0;
 
     console.log('Réservation sauvegardée en mémoire:', saved);
 
-    // ---------- Envoi email de confirmation (si SMTP configuré) ----------
-    const smtpHost = process.env.SMTP_HOST;
-    const smtpPort = Number(process.env.SMTP_PORT || 465);
-    const smtpSecure = process.env.SMTP_SECURE === 'true';
-    const smtpUser = process.env.SMTP_USER;
-    const smtpPass = process.env.SMTP_PASS;
-
-    if (!smtpHost || !smtpUser || !smtpPass) {
-      console.warn(
-        "SMTP non configuré : pas d'envoi de mail (variables manquantes)."
-      );
+    // ---------- Envoi email via SendGrid (remplace Nodemailer) ----------
+    if (!SENDGRID_API_KEY) {
+      console.warn('SENDGRID_API_KEY non configuré : pas d\'envoi de mail.');
       return res.json({
         success: true,
-        message:
-          'Réservation enregistrée (mail non envoyé : SMTP non configuré).'
+        message: 'Réservation enregistrée (mail non envoyé : SendGrid non configuré).'
       });
     }
-
-    const transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpSecure,
-      auth: {
-        user: smtpUser,
-        pass: smtpPass
-      }
-    });
 
     const startStr = rRange
       ? new Date(rRange[0]).toLocaleDateString('fr-FR')
@@ -351,12 +334,12 @@ app.post('/api/paypal/complete', async (req, res) => {
       ? new Date(rRange[1]).toLocaleDateString('fr-FR')
       : '';
 
-// ---------- Email 1 : pour le propriétaire ----------
-const ownerMailOptions = {
-  from: `"The Tiny Home" <${smtpUser}>`,
-  to: 'thetinyhome73@gmail.com',
-  subject: `Nouvelle réservation - ${saved.prenom} ${saved.nom}`,
-  text: `Bonjour,
+    // Email 1 : pour le propriétaire
+    const ownerEmail = {
+      to: 'thetinyhome73@gmail.com',
+      from: EMAIL_FROM,
+      subject: `Nouvelle réservation - ${saved.prenom} ${saved.nom}`,
+      text: `Bonjour,
 
 Une nouvelle réservation a été confirmée et payée via PayPal.
 
@@ -379,16 +362,15 @@ Une nouvelle réservation a été confirmée et payée via PayPal.
 Pensez à bloquer ces dates manuellement sur Airbnb pour éviter les doubles réservations.
 
 Cordialement,
-Votre site The Tiny Home
-`
-};
+Votre site The Tiny Home`
+    };
 
-// ---------- Email 2 : pour le client ----------
-const clientMailOptions = {
-  from: `"The Tiny Home" <${smtpUser}>`,
-  to: saved.email,
-  subject: 'Confirmation de votre réservation - The Tiny Home',
-  text: `Bonjour ${saved.prenom || ''},
+    // Email 2 : pour le client
+    const clientEmail = {
+      to: saved.email,
+      from: EMAIL_FROM,
+      subject: 'Confirmation de votre réservation - The Tiny Home',
+      text: `Bonjour ${saved.prenom || ''},
 
 Merci 🙏 pour votre réservation à The Tiny Home ! 💚
 
@@ -433,30 +415,32 @@ Vous pouvez nous contacter directement par email :
 thetinyhome73@gmail.com
 
 À très bientôt,
-The Tiny Home
-`
-};
+The Tiny Home`
+    };
 
-try {
-  // Envoi à toi (propriétaire)
-  await transporter.sendMail(ownerMailOptions);
-  console.log('Email propriétaire envoyé à thetinyhome73@gmail.com');
+    try {
+      // Envoi à toi (propriétaire)
+      await sgMail.send(ownerEmail);
+      console.log('Email propriétaire envoyé via SendGrid à thetinyhome73@gmail.com');
 
-  // Envoi au client
-  await transporter.sendMail(clientMailOptions);
-  console.log('Email client envoyé à', saved.email);
+      // Envoi au client
+      await sgMail.send(clientEmail);
+      console.log('Email client envoyé via SendGrid à', saved.email);
 
-  return res.json({
-    success: true,
-    message: 'Réservation enregistrée et emails envoyés'
-  });
-} catch (mailErr) {
-  console.error('Erreur envoi email confirmation :', mailErr);
-  return res.json({
-    success: true,
-    message: 'Réservation enregistrée (erreur envoi email).'
-  });
-}
+      return res.json({
+        success: true,
+        message: 'Réservation enregistrée et emails envoyés'
+      });
+    } catch (mailErr) {
+      console.error('Erreur envoi email via SendGrid :', mailErr);
+      if (mailErr.response) {
+        console.error('Détails erreur SendGrid:', mailErr.response.body);
+      }
+      return res.json({
+        success: true,
+        message: 'Réservation enregistrée (erreur envoi email).'
+      });
+    }
   } catch (err) {
     console.error('Erreur validation PayPal (sans SDK):', err);
     return res
