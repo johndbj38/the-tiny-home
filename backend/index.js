@@ -292,7 +292,7 @@ app.post('/api/paypal/complete', async (req, res) => {
       return res.status(400).json({ error: 'Paiement non complété' });
     }
 
-    // ---------- CORRECTION : Gestion des dates sans décalage de fuseau ----------
+   // ---------- CORRECTION : Gestion des dates sans décalage de fuseau ----------
     let rRange = null;
     let startStr = '';
     let endStr = '';
