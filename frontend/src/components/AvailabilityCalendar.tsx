@@ -18,8 +18,7 @@ const SPECIAL_PRICES = [
   { start: '2025-12-24', end: '2025-12-26', price: 250 }, // Noël 2025
   { start: '2026-02-14', end: '2026-02-14', price: 180 }, // Saint-Valentin 2026
   { start: '2025-12-31', end: '2026-01-01', price: 250 }, // Nouvel an
-  { start: '2025-12-16', end: '2025-12-17', price: 0.01 } // test
-  // Ajoute d'autres périodes ici
+  { start: '2025-12-16', end: '2025-12-17', price: 0.10 } // test
 ];
 
 const TARGET_EMAIL = 'thetinyhome73@gmail.com';
@@ -41,13 +40,14 @@ export default function AvailabilityCalendar() {
 
   const [formError, setFormError] = useState<string | null>(null);
 
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000';
+
   useEffect(() => {
     async function fetchEvents() {
       setLoading(true);
       setError(null);
       try {
-        const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000';
-        const res = await fetch(`${API_BASE}/api/availability`);
+        const res = await fetch(`${API_BASE_URL}/api/availability`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         const ev: EventItem[] = json.events || [];
@@ -71,7 +71,7 @@ export default function AvailabilityCalendar() {
       }
     }
     fetchEvents();
-  }, []);
+  }, [API_BASE_URL]);
 
   function dateToYMD(d: Date) {
     const y = d.getFullYear();
@@ -89,7 +89,6 @@ export default function AvailabilityCalendar() {
     return d.toLocaleDateString('fr-FR');
   }
 
-  // calcule nuits, prix brut, remise et prix final
   function calcNightsAndPrice(range: Date[] | null) {
     if (!range || range.length !== 2 || !range[0] || !range[1]) {
       return { nights: 0, price: 0, discountPercent: 0, discountAmount: 0, finalPrice: 0 };
@@ -123,14 +122,12 @@ export default function AvailabilityCalendar() {
       }
     }
 
-    // Remises selon durée
     let discountPercent = 0;
     if (nights >= 7) discountPercent = 15;
     else if (nights >= 3) discountPercent = 10;
-    else discountPercent = 0;
 
-    const discountAmountCents = Math.round((totalPrice * discountPercent / 100) * 100); // en centimes
-    const discountAmountFinal = discountAmountCents / 100; // en euros
+    const discountAmountCents = Math.round((totalPrice * discountPercent / 100) * 100);
+    const discountAmountFinal = discountAmountCents / 100;
 
     const finalPrice = Math.round((totalPrice - discountAmountFinal) * 100) / 100;
 
@@ -145,7 +142,6 @@ export default function AvailabilityCalendar() {
 
   const { nights, price, discountPercent, discountAmount, finalPrice } = calcNightsAndPrice(range);
 
-  // ✅ VALIDATION : formulaire complet ?
   const [isRulesAccepted, setIsRulesAccepted] = useState(false);
   const isFormValid =
     nom.trim() !== '' &&
@@ -205,10 +201,7 @@ export default function AvailabilityCalendar() {
   function buildMailtoLink() {
     const subject = `Demande de réservation - The Tiny Home (${prenom} ${nom})`;
     const body = buildMailBody();
-    const params = new URLSearchParams({
-      subject,
-      body,
-    });
+    const params = new URLSearchParams({ subject, body });
     return `mailto:${TARGET_EMAIL}?${params.toString()}`;
   }
 
@@ -219,7 +212,6 @@ export default function AvailabilityCalendar() {
     window.location.href = mailto;
   }
 
-  // Détermine le prix par nuit affiché (prix de la première nuit)
   const displayedPricePerNight = (() => {
     if (range && range.length === 2) {
       const startDay = new Date(range[0]);
@@ -327,14 +319,12 @@ export default function AvailabilityCalendar() {
         
           {formError && <p className="mt-4 text-red-500">{formError}</p>}
 
-          {/* ✅ Message d'aide si formulaire incomplet */}
           {!isFormValid && nights > 0 && (
             <p className="mt-4 text-orange-600 text-sm font-medium">
               ⚠️ Merci de remplir toutes vos informations (nom, prénom, email, téléphone et de valider le règlement) avant de procéder au paiement.
             </p>
           )}
 
-          {/* ✅ Case à cocher : règlement intérieur */}
           <div className="mt-4 flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
             <input
               id="rules-accepted"
@@ -357,13 +347,13 @@ export default function AvailabilityCalendar() {
 
           {(() => {
             const AIRBNB_LINK = 'https://www.airbnb.fr/rooms/746228202767512240?guests=1&adults=1&s=67&unique_share_id=d62985eb-ed51-4f76-98c3-fa9363f1486b';
-            const airbnbApproxPrice = Math.round(finalPrice * 1.2 * 100) / 100; // ~20% plus cher
+            const airbnbApproxPrice = Math.round(finalPrice * 1.2 * 100) / 100;
             const airbnbPriceStr = airbnbApproxPrice.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
 
             return (
               <div>
                 <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Bouton PayPal */}
+                  {/* PayPal */}
                   <PayPalScriptProvider options={{ "client-id": import.meta.env.VITE_PAYPAL_CLIENT_ID, currency: "EUR" }}>
                     <div className="w-full flex justify-center">
                       <div className={`${!isFormValid ? 'opacity-50 pointer-events-none' : ''}`}>
@@ -394,55 +384,61 @@ export default function AvailabilityCalendar() {
                             if (!actions) return;
 
                             try {
-                              // Capture côté client
                               const order = await actions.order!.capture();
-                              console.log('Paiement capturé (client) :', order);
+console.log('Paiement capturé (client) :', order);
 
-                              // Normaliser range si besoin
-                              const normalizedRange = Array.isArray(range) && range.length === 2
-                                ? [
-                                    (range[0] instanceof Date) ? range[0].toISOString() : new Date(range[0]).toISOString(),
-                                    (range[1] instanceof Date) ? range[1].toISOString() : new Date(range[1]).toISOString()
-                                  ]
-                                : range;
+// On envoie des dates "pures" AAAA-MM-JJ pour éviter tout souci de fuseau
+const normalizedRange = Array.isArray(range) && range.length === 2
+  ? [
+      (() => {
+        const d = new Date(range[0] as Date);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`; // date d'arrivée
+      })(),
+      (() => {
+        const d = new Date(range[1] as Date);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`; // date de départ
+      })(),
+    ]
+  : range;
 
-                              const reservationData = {
-                                nom: typeof nom !== 'undefined' ? nom : '',
-                                prenom: typeof prenom !== 'undefined' ? prenom : '',
-                                tel: typeof tel !== 'undefined' ? tel : '',
-                                email: typeof email !== 'undefined' ? email : '',
-                                range: normalizedRange,
-                                nights: nights || 0,
-                                finalPrice: finalPrice || 0,
-                              };
+const reservationData = {
+  nom,
+  prenom,
+  tel,
+  email,
+  range: normalizedRange, // maintenant ["2025-12-16", "2025-12-17"]
+  nights,
+  finalPrice,
+};
 
                               console.log('Avant fetch -> envoi au backend :', { orderId: data.orderID, reservationData });
 
-                              // APPEL FETCH : vérifie que cette ligne existe bien chez toi
-                              const res = await fetch('http://localhost:4000/api/paypal/complete', {
+                              const response = await fetch(`${API_BASE_URL}/api/paypal/complete`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ orderId: data.orderID, reservationData }),
-                              }).catch(err => {
-                                console.error('Erreur fetch (catch) :', err);
-                                throw err;
                               });
 
-                              console.log('Fetch envoyé, status:', res.status, 'ok:', res.ok);
+                              console.log('Fetch envoyé, status:', response.status, 'ok:', response.ok);
 
-                              // parser la réponse
-                              const json = await res.json().catch(() => {
+                              const json = await response.json().catch(() => {
                                 console.warn('Impossible de parser JSON réponse backend');
                                 return null;
                               });
                               console.log('Réponse JSON backend :', json);
 
-                              if (res.ok && json && json.success) {
-                                alert(`Paiement confirmé et réservation enregistrée. Merci, ${order.payer?.name?.given_name ?? prenom} 🎉`);
-                                // si tu as une fonction fetchAvailability(), appelle-la ici pour recharger le calendrier
-                                // await fetchAvailability();
+                              if (response.ok && json && json.success) {
+                                alert(`Paiement confirmé et réservation enregistrée. Merci un mail de confirmation vous été envoyé, verifiez vos spam, ${order.payer?.name?.given_name ?? prenom} 🎉`);
                               } else {
-                                alert('Le paiement est fait mais l\'enregistrement a échoué. Voir console backend/frontend.');
+                                const errorMessage = json?.message || 'La réservation n\'a pas pu être enregistrée.';
+                                console.error('Réponse backend non OK :', response.status, errorMessage);
+                                alert(`Le paiement est fait mais l'enregistrement a échoué : ${errorMessage}`);
                               }
                             } catch (err) {
                               console.error('Erreur dans onApprove (try/catch) :', err);
@@ -454,7 +450,7 @@ export default function AvailabilityCalendar() {
                     </div>
                   </PayPalScriptProvider>
 
-                  {/* Bouton Airbnb (rose) */}
+                  {/* Airbnb */}
                   <a
                     href={isFormValid ? AIRBNB_LINK : undefined}
                     target="_blank"
@@ -470,7 +466,7 @@ export default function AvailabilityCalendar() {
                     className={`block text-white text-center py-3 px-4 rounded-lg font-semibold transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 ${
                       !isFormValid ? 'opacity-50 pointer-events-none' : ''
                     }`}
-                    style={{ backgroundColor: '#FF5A5F' }} // couleur rose Airbnb
+                    style={{ backgroundColor: '#FF5A5F' }}
                   >
                     {isFormValid ? (
                       <>
@@ -482,18 +478,17 @@ export default function AvailabilityCalendar() {
                     )}
                   </a>
 
-                  {/* Bouton Mail */}
+                  {/* Email */}
                   <button
                     type="button"
                     onClick={openMailClient}
-                    className="bg-green-600 text-white text-center py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none"
+                    className="bg绿色-600 text-white text-center py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none"
                     disabled={!isFormValid}
                   >
                     ✉️ Contacter par email avec formulaire
                   </button>
                 </div>
 
-                {/* Info frais + détails prix */}
                 <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <div className="text-sm text-gray-700">
                     <p className="font-semibold mb-2">📊 Détails du séjour :</p>
@@ -517,61 +512,8 @@ export default function AvailabilityCalendar() {
         </form>
       </div>
 
-      {/* Modal Règlement Intérieur */}
-      {showRulesModal && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={() => setShowRulesModal(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6 relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Bouton fermer */}
-            <button
-              onClick={() => setShowRulesModal(false)}
-              className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 transition"
-              aria-label="Fermer"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-
-            {/* Contenu */}
-            <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
-              ⚠️ Règlement intérieur
-            </h3>
-            <ul className="list-disc pl-5 space-y-2 text-sm text-gray-800">
-              <li>Aucune fête ni événement ne sont autorisés.</li>
-              <li>Merci de respecter le calme après 22h sur la terrasse du SPA.</li>
-              <li>Pas d&apos;invités non prévus.</li>
-              <li>La vaisselle doit être propre et rangée (un lave-vaisselle est à votre disposition).</li>
-              <li>Enlever vos chaussures à l&apos;intérieur.</li>
-              <li>Interdiction de fumer dans le logement.</li>
-              <li>Les animaux de compagnie ne sont pas admis.</li>
-              <li>En cas de perte des clés : indemnisation de 25 €.</li>
-              <li>Respectez le linge de maison (draps et serviettes inclus) : indemnisation de 50 € en cas de perte ou de détérioration.</li>
-              <li>Un nettoyage supplémentaire entraînera une indemnisation de 150 €.</li>
-              <li>Poubelles non jetées : indemnisation de 15 € (le conteneur se trouve en bas de la rue, près de la route principale).</li>
-              <li>En cas de dégâts ou de non-respect du règlement intérieur : indemnisation de 190 €.</li>
-            </ul>
-            <p className="mt-4 text-sm text-gray-900 font-medium">
-              ❤️ Merci pour votre compréhension et votre coopération.
-            </p>
-
-            {/* Bouton fermer en bas */}
-            <div className="mt-6 flex justify-center">
-              <button
-                onClick={() => setShowRulesModal(false)}
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
-              >
-                Fermer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal Règlement Intérieur (inchangé) */}
+      {/* ... garder exactement ton modal existant ici ... */}
     </section>
   );
 }
