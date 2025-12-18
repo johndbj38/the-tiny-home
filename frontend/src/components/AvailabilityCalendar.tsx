@@ -55,15 +55,24 @@ export default function AvailabilityCalendar() {
 
         const s = new Set<string>();
         
-        // 1) Désactiver toutes les dates réservées (iCal + locales)//
-        for (const e of ev) {
-          if (!e.start || !e.end) continue;
-          const start = new Date(e.start);
-          const end = new Date(e.end);
-          for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
-            s.add(dateToYMD(new Date(d)));
-          }
-        }
+// Limite haute : aujourd'hui + 2 ans
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+const maxFuture = new Date(today);
+maxFuture.setFullYear(maxFuture.getFullYear() + 2);
+
+for (const e of ev) {
+  if (!e.start || !e.end) continue;
+  const start = new Date(e.start);
+  const end = new Date(e.end);
+
+  // On coupe l'événement s'il dépasse trop loin dans le futur
+  const effectiveEnd = end.getTime() > maxFuture.getTime() ? maxFuture : end;
+
+  for (let d = new Date(start); d < effectiveEnd; d.setDate(d.getDate() + 1)) {
+    s.add(dateToYMD(new Date(d)));
+  }
+}
 
         // 2) Désactiver toutes les dates passées //
       const today = new Date();
