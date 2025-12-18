@@ -19,7 +19,6 @@ const SPECIAL_PRICES = [
   { start: '2026-02-14', end: '2026-02-14', price: 250 }, // Saint-Valentin
   { start: '2026-02-13', end: '2026-02-13', price: 250 }, // Saint-Valentin
   { start: '2025-12-31', end: '2026-01-01', price: 250 }, // Nouvel an
-  { start: '2026-03-01', end: '2026-03-02', price: 1 },
 ];
 
 const TARGET_EMAIL = 'thetinyhome73@gmail.com';
