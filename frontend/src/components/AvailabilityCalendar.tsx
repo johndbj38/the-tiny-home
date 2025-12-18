@@ -117,11 +117,14 @@ export default function AvailabilityCalendar() {
   }
 
   function tileDisabled({ date, view }: { date: Date; view: string }) {
-    if (view !== 'month') return false;
-    const ymd = dateToYMD(date);
-    // On ne désactive que les dates passées
-    return disabledSet.has(ymd);
-  }
+  if (view !== 'month') return false;
+  const ymd = dateToYMD(date);
+
+  // ❌ Vraiment bloquées (non cliquables) :
+  // - dates passées
+  // - nuits déjà réservées
+  return disabledSet.has(ymd) || bookedSet.has(ymd);
+}
 
   function tileClassName({ date, view }: { date: Date; view: string }) {
     if (view !== 'month') return '';
