@@ -19,7 +19,6 @@ function App() {
     'https://i.imgur.com/5gSq0r6.jpg',
     'https://imgur.com/fAFN2yl.jpg',
     'https://imgur.com/CnU6pdZ.jpg',
-    'https://imgur.com/0yIgOHu.jpg',
     'https://imgur.com/HVHOIir.jpg',
     'https://imgur.com/u6jNTR1.jpg',
     'https://imgur.com/Dj8q05v.jpg',
