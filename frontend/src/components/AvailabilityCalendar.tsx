@@ -696,28 +696,37 @@ export default function AvailabilityCalendar() {
 
             <h4 className="text-lg font-semibold mb-4">Règlement intérieur</h4>
 
-            <div className="max-h-80 overflow-y-auto text-sm text-gray-700 space-y-2">
-              {/* 🔽🔽 Remplace ce bloc par TON texte de règlement intérieur 🔽🔽 */}
-              
-               ⚠️ RÈGLEMENT INTÉRIEUR :
-               - Aucune fête ni événement ne sont autorisés.
-               - Merci de respecter le calme après 22h sur la terrasse du SPA.
-               - Pas d'invités non prévus.
-               - La vaisselle doit être propre et rangée (un lave-vaisselle est à votre disposition).
-               - Enlever vos chaussures à l'intérieur.
-               - Ne pas manger ni boire dans les chambres.
-               - Interdiction de fumer dans le logement.
-               - Les animaux de compagnie ne sont pas admis.
-               - En cas de perte des clés : indemnisation de 40 €.
-               - Respectez le linge de maison (draps et serviettes inclus) : indemnisation de 50 € en cas de perte ou de détérioration.
-               - Un nettoyage supplémentaire entraînera une indemnisation de 150 €.
-               - Poubelles non jetées : indemnisation de 15 € (le conteneur se trouve en bas de la rue, près de la route principale).
-               - En cas de dégâts ou de non-respect du règlement intérieur : indemnisation de 300 €.
-
-               ❤️ Merci pour votre compréhension et votre coopération.
-              
-              {/* 🔼🔼 Remplace par ton contenu 🔼🔼 */}
-            </div>
+            <div className="max-h-80 overflow-y-auto text-sm text-gray-700 space-y-3">
+  <p className="font-semibold">
+    ⚠️ RÈGLEMENT INTÉRIEUR
+  </p>
+  <p>
+    Afin de garantir le confort et la tranquillité de tous, merci de respecter les règles suivantes :
+  </p>
+  <ul className="list-disc list-inside space-y-1">
+    <li>Aucune fête ni événement n’est autorisé.</li>
+    <li>Merci de respecter le calme, en particulier sur la terrasse du SPA, après 22h.</li>
+    <li>Aucune personne extérieure non prévue dans la réservation n’est autorisée.</li>
+    <li>La vaisselle doit être propre et rangée à votre départ (un lave-vaisselle est à votre disposition).</li>
+    <li>Merci de retirer vos chaussures à l’intérieur du logement.</li>
+    <li>Il est interdit de manger ou de boire dans les chambres.</li>
+    <li>Il est strictement interdit de fumer à l’intérieur du logement.</li>
+    <li>Les animaux de compagnie ne sont pas admis.</li>
+    <li>En cas de perte des clés : indemnisation forfaitaire de <strong>40 €</strong>.</li>
+    <li>Merci de respecter le linge de maison (draps et serviettes fournis) : indemnisation de <strong>50 €</strong> en cas de perte ou de détérioration.</li>
+    <li>Un nettoyage anormalement important pourra entraîner une indemnisation de <strong>150 €</strong>.</li>
+    <li>
+      Poubelles non sorties : indemnisation de <strong>15 €</strong> (le conteneur se trouve en bas de la rue, près de la route
+      principale).
+    </li>
+    <li>
+      En cas de dégâts ou de non-respect du règlement intérieur : indemnisation pouvant aller jusqu’à <strong>300 €</strong>.
+    </li>
+  </ul>
+  <p className="pt-2">
+    ❤️ Merci pour votre compréhension et votre coopération.
+  </p>
+</div>
 
             <div className="mt-4 flex justify-end">
               <button
