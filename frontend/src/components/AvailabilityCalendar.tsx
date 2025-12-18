@@ -682,8 +682,55 @@ export default function AvailabilityCalendar() {
         </form>
       </div>
 
-      {/* Modal Règlement Intérieur (inchangé) */}
-      {/* ... garder exactement ton modal existant ici ... */}
+      {showRulesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white max-w-lg w-full mx-4 rounded-lg shadow-lg p-6 relative">
+            <button
+              type="button"
+              onClick={() => setShowRulesModal(false)}
+              className="absolute top-2 right-3 text-gray-500 hover:text-gray-700 text-xl font-bold"
+              aria-label="Fermer"
+            >
+              ×
+            </button>
+
+            <h4 className="text-lg font-semibold mb-4">Règlement intérieur</h4>
+
+            <div className="max-h-80 overflow-y-auto text-sm text-gray-700 space-y-2">
+              {/* 🔽🔽 Remplace ce bloc par TON texte de règlement intérieur 🔽🔽 */}
+              
+⚠️ RÈGLEMENT INTÉRIEUR :
+- Aucune fête ni événement ne sont autorisés.
+- Merci de respecter le calme après 22h sur la terrasse du SPA.
+- Pas d'invités non prévus.
+- La vaisselle doit être propre et rangée (un lave-vaisselle est à votre disposition).
+- Enlever vos chaussures à l'intérieur.
+- Ne pas manger ni boire dans les chambres.
+- Interdiction de fumer dans le logement.
+- Les animaux de compagnie ne sont pas admis.
+- En cas de perte des clés : indemnisation de 40 €.
+- Respectez le linge de maison (draps et serviettes inclus) : indemnisation de 50 € en cas de perte ou de détérioration.
+- Un nettoyage supplémentaire entraînera une indemnisation de 150 €.
+- Poubelles non jetées : indemnisation de 15 € (le conteneur se trouve en bas de la rue, près de la route principale).
+- En cas de dégâts ou de non-respect du règlement intérieur : indemnisation de 300 €.
+
+❤️ Merci pour votre compréhension et votre coopération.
+              
+              {/* 🔼🔼 Remplace par ton contenu 🔼🔼 */}
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowRulesModal(false)}
+                className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
