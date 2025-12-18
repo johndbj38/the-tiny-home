@@ -74,8 +74,6 @@ for (const e of ev) {
 }
 
         // 2) Désactiver toutes les dates passées //
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
       const limit = new Date(today); // on commence à aujourd'hui
 
       // On remonte par exemple jusqu'à 2 ans en arrière (suffisant pour ton cas) //
@@ -334,7 +332,7 @@ for (const e of ev) {
               />
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">Nom</label>
               <input type="text" value={nom} onChange={(e) => setNom(e.target.value)} className="mt-1 block w-full border rounded-md px-3 py-2" />
@@ -521,7 +519,7 @@ const reservationData = {
                   <button
                     type="button"
                     onClick={openMailClient}
-                    className="bg绿色-600 text-white text-center py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none"
+                    className="bg-green-600 text-white text-center py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none"
                     disabled={!isFormValid}
                   >
                     ✉️ Contacter par email avec formulaire
