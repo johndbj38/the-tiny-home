@@ -710,7 +710,6 @@ export default function AvailabilityCalendar() {
     <li>Aucune personne extérieure non prévue dans la réservation n’est autorisée.</li>
     <li>La vaisselle doit être propre et rangée à votre départ (un lave-vaisselle est à votre disposition).</li>
     <li>Merci de retirer vos chaussures à l’intérieur du logement.</li>
-    <li>Il est interdit de manger ou de boire dans les chambres.</li>
     <li>Il est strictement interdit de fumer à l’intérieur du logement.</li>
     <li>Les animaux de compagnie ne sont pas admis.</li>
     <li>En cas de perte des clés : indemnisation forfaitaire de <strong>40 €</strong>.</li>
