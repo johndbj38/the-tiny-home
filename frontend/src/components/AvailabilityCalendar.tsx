@@ -258,8 +258,17 @@ export default function AvailabilityCalendar() {
           Calendrier &amp; réservation
         </h3>
 
-        {loading && <p className="text-center">Chargement…</p>}
-        {error && <p className="text-red-500 text-center">Erreur (availability) : {error}</p>}
+        {error && (
+  <p className="text-red-500 text-center mb-2">
+    Erreur lors du chargement des disponibilités : {error}
+  </p>
+)}
+
+{loading && !error && (
+  <p className="text-gray-400 text-center mb-2 text-sm">
+    Mise à jour des disponibilités…
+  </p>
+)}
 
         <div className="flex justify-center mb-6">
           <div className="w-full max-w-md">
