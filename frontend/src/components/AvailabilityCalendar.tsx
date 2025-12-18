@@ -129,17 +129,38 @@ for (const e of ev) {
       for (let d = new Date(start); d.getTime() < end.getTime(); d.setDate(d.getDate() + 1)) {
         let priceForThisNight = DEFAULT_PRICE_PER_NIGHT;
 
-        for (const specialPrice of SPECIAL_PRICES) {
-          const specialStart = new Date(specialPrice.start);
-          const specialEnd = new Date(specialPrice.end);
-          specialStart.setHours(0, 0, 0, 0);
-          specialEnd.setHours(0, 0, 0, 0);
+for (const specialPrice of SPECIAL_PRICES) {
+  const specialStart = new Date(specialPrice.start);
+  const specialEnd = new Date(specialPrice.end);
+  
+  // On compare uniquement mois + jour (pas l'année)
+  const dMonth = d.getMonth();
+  const dDay = d.getDate();
+  
+  const startMonth = specialStart.getMonth();
+  const startDay = specialStart.getDate();
+  
+  const endMonth = specialEnd.getMonth();
+  const endDay = specialEnd.getDate();
 
-          if (d.getTime() >= specialStart.getTime() && d.getTime() <= specialEnd.getTime()) {
-            priceForThisNight = specialPrice.price;
-            break;
-          }
-        }
+  // Cas simple : même mois (ex: 24 déc → 26 déc)
+  if (startMonth === endMonth) {
+    if (dMonth === startMonth && dDay >= startDay && dDay <= endDay) {
+      priceForThisNight = specialPrice.price;
+      break;
+    }
+  }
+  // Cas à cheval sur 2 mois (ex: 31 déc → 1er jan)
+  else {
+    if (
+      (dMonth === startMonth && dDay >= startDay) ||
+      (dMonth === endMonth && dDay <= endDay)
+    ) {
+      priceForThisNight = specialPrice.price;
+      break;
+    }
+  }
+}
         totalPrice += priceForThisNight;
       }
     }
@@ -240,22 +261,41 @@ for (const e of ev) {
     window.location.href = mailto;
   }
 
-  const displayedPricePerNight = (() => {
-    if (range && range.length === 2) {
-      const startDay = new Date(range[0]);
-      startDay.setHours(0, 0, 0, 0);
-      for (const specialPrice of SPECIAL_PRICES) {
-        const specialStart = new Date(specialPrice.start);
-        const specialEnd = new Date(specialPrice.end);
-        specialStart.setHours(0, 0, 0, 0);
-        specialEnd.setHours(0, 0, 0, 0);
-        if (startDay.getTime() >= specialStart.getTime() && startDay.getTime() <= specialEnd.getTime()) {
+const displayedPricePerNight = (() => {
+  if (range && range.length === 2) {
+    const startDay = new Date(range[0]);
+    const dMonth = startDay.getMonth();
+    const dDay = startDay.getDate();
+
+    for (const specialPrice of SPECIAL_PRICES) {
+      const specialStart = new Date(specialPrice.start);
+      const specialEnd = new Date(specialPrice.end);
+
+      const startMonth = specialStart.getMonth();
+      const startDay = specialStart.getDate();
+
+      const endMonth = specialEnd.getMonth();
+      const endDay = specialEnd.getDate();
+
+      // Cas simple : même mois
+      if (startMonth === endMonth) {
+        if (dMonth === startMonth && dDay >= startDay && dDay <= endDay) {
+          return specialPrice.price;
+        }
+      }
+      // Cas à cheval sur 2 mois
+      else {
+        if (
+          (dMonth === startMonth && dDay >= startDay) ||
+          (dMonth === endMonth && dDay <= endDay)
+        ) {
           return specialPrice.price;
         }
       }
     }
-    return DEFAULT_PRICE_PER_NIGHT;
-  })();
+  }
+  return DEFAULT_PRICE_PER_NIGHT;
+})();
 
   return (
     <section id="availability" className="py-12 bg-white">
