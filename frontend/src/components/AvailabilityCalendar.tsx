@@ -519,7 +519,7 @@ const reservationData = {
                   <button
                     type="button"
                     onClick={openMailClient}
-                    className="bg-green-600 text-white text-center py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none"
+                    className="bg-green-600 text-black text-center py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none"
                     disabled={!isFormValid}
                   >
                     ✉️ Contacter par email avec formulaire
