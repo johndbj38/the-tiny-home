@@ -54,6 +54,8 @@ export default function AvailabilityCalendar() {
         setEvents(ev);
 
         const s = new Set<string>();
+        
+        // 1) Désactiver toutes les dates réservées (iCal + locales)//
         for (const e of ev) {
           if (!e.start || !e.end) continue;
           const start = new Date(e.start);
@@ -62,6 +64,20 @@ export default function AvailabilityCalendar() {
             s.add(dateToYMD(new Date(d)));
           }
         }
+
+        // 2) Désactiver toutes les dates passées //
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const limit = new Date(today); // on commence à aujourd'hui
+
+      // On remonte par exemple jusqu'à 2 ans en arrière (suffisant pour ton cas) //
+      const past = new Date(today);
+      past.setFullYear(past.getFullYear() - 2);
+
+      for (let d = new Date(past); d < limit; d.setDate(d.getDate() + 1)) {
+        s.add(dateToYMD(new Date(d)));
+      }
+        
         setDisabledSet(s);
       } catch (err: any) {
         setError(err.message || 'Erreur inconnue');
@@ -166,6 +182,12 @@ export default function AvailabilityCalendar() {
     if (range && range.length === 2) {
       const s = new Date(range[0]);
       const e = new Date(range[1]);
+
+      // 👉 Règle : si arrivée un dimanche (0 = dimanche), minimum 2 nuits
+    const arrivalDay = s.getDay(); // 0 dimanche, 1 lundi, ..., 6 samedi
+    if (arrivalDay === 0 && nights < 2) {
+      return setFormError("Pour une arrivée le dimanche, le séjour doit être d'au moins 2 nuits.");
+    }
       for (let d = new Date(s); d < e; d.setDate(d.getDate() + 1)) {
         if (disabledSet.has(dateToYMD(new Date(d)))) {
           return setFormError('La plage sélectionnée contient des dates indisponibles. Choisissez une autre plage.');
