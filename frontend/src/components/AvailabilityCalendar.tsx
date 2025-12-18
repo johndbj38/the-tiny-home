@@ -69,7 +69,10 @@ for (const e of ev) {
   // On coupe l'événement s'il dépasse trop loin dans le futur
   const effectiveEnd = end.getTime() > maxFuture.getTime() ? maxFuture : end;
 
+  // 👉 On ne bloque que jusqu'à la veille du départ
+  // Exemple : 14 → 15  => on bloque uniquement le 14
   for (let d = new Date(start); d < effectiveEnd; d.setDate(d.getDate() + 1)) {
+    // d tourne déjà de start (14) à end-1 (14), donc OK pour les nuits
     s.add(dateToYMD(new Date(d)));
   }
 }
