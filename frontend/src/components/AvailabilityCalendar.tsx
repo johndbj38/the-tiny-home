@@ -120,12 +120,10 @@ export default function AvailabilityCalendar() {
   if (view !== 'month') return false;
   const ymd = dateToYMD(date);
 
-  // ❌ Vraiment bloquées (non cliquables) :
-  // - dates passées
-  // - nuits déjà réservées
-  return disabledSet.has(ymd) || bookedSet.has(ymd);
+  // ❌ On bloque vraiment seulement :
+  // - les dates passées
+  return disabledSet.has(ymd);
 }
-
   function tileClassName({ date, view }: { date: Date; view: string }) {
     if (view !== 'month') return '';
     const ymd = dateToYMD(date);
@@ -358,39 +356,71 @@ export default function AvailabilityCalendar() {
               tileClassName={tileClassName}
               selectRange={true}
               locale="fr-FR"
-              onChange={(val: Date | Date[] | null) => {
-                if (Array.isArray(val)) {
-                  // Plage complète sélectionnée
-                  setRange(val as Date[]);
-                } else if (val instanceof Date) {
-                  // Premier clic sur un jour
-                  const clicked = new Date(val);
-                  clicked.setHours(0, 0, 0, 0);
-                  const ymd = dateToYMD(clicked);
+             onChange={(val: Date | Date[] | null) => {
+  if (Array.isArray(val)) {
+    // Plage complète sélectionnée (2e clic)
+    const [start, end] = val;
+    if (!start || !end) {
+      setRange(null);
+      return;
+    }
 
-                  // On ne fait rien de spécial pour les dates passées ou déjà réservées
-                  if (disabledSet.has(ymd) || bookedSet.has(ymd)) {
-                    setRange(null);
-                    return;
-                  }
+    const s = new Date(start);
+    const e = new Date(end);
+    s.setHours(0, 0, 0, 0);
+    e.setHours(0, 0, 0, 0);
 
-                  // Regarder si le lendemain est un jour d'arrivée
-                  const next = new Date(clicked);
-                  next.setDate(next.getDate() + 1);
-                  next.setHours(0, 0, 0, 0);
-                  const nextYmd = dateToYMD(next);
+    // Si l'utilisateur a cliqué à l'envers (fin avant début), on inverse
+    if (e < s) {
+      const tmp = new Date(s);
+      (s as any) = e;
+      (e as any) = tmp;
+    }
 
-                  if (arrivalSet.has(nextYmd) && !bookedSet.has(nextYmd)) {
-                    // 👉 Auto-sélection : nuit du jour cliqué vers le lendemain
-                    setRange([clicked, next]);
-                  } else {
-                    // Comportement normal : on attend un deuxième clic
-                    setRange([clicked]);
-                  }
-                } else {
-                  setRange(null);
-                }
-              }}
+    // On vérifie que la plage ne chevauche aucune nuit réservée
+    let conflict = false;
+    for (let d = new Date(s); d < e; d.setDate(d.getDate() + 1)) {
+      const ymd = dateToYMD(new Date(d));
+      if (bookedSet.has(ymd)) {
+        conflict = true;
+        break;
+      }
+    }
+
+    if (conflict) {
+  setRange(null);
+} else {
+  setRange([s, e]);
+}
+  } else if (val instanceof Date) {
+    // Premier clic sur un jour
+    const clicked = new Date(val);
+    clicked.setHours(0, 0, 0, 0);
+    const ymd = dateToYMD(clicked);
+
+    // On bloque seulement les dates passées
+    if (disabledSet.has(ymd)) {
+      setRange(null);
+      return;
+    }
+
+    // Regarder si le lendemain est un jour d'arrivée ET que la nuit n'est pas déjà réservée
+    const next = new Date(clicked);
+    next.setDate(next.getDate() + 1);
+    next.setHours(0, 0, 0, 0);
+    const nextYmd = dateToYMD(next);
+
+    if (arrivalSet.has(nextYmd) && !bookedSet.has(nextYmd)) {
+      // 👉 Auto-sélection : nuit du jour cliqué vers le lendemain (13→14 si 14 est arrivée)
+      setRange([clicked, next]);
+    } else {
+      // Comportement normal : on attend un deuxième clic
+      setRange([clicked]);
+    }
+  } else {
+    setRange(null);
+  }
+}}
               value={range as any}
             />
           </div>
