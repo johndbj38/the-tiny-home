@@ -303,29 +303,8 @@ for (const e of ev) {
         </div>
 
         <form className="bg-gray-50 p-6 rounded-md shadow-sm" onSubmit={(e) => e.preventDefault()}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Nom</label>
-              <input type="text" value={nom} onChange={(e) => setNom(e.target.value)} className="mt-1 block w-full border rounded-md px-3 py-2" />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Prénom</label>
-              <input type="text" value={prenom} onChange={(e) => setPrenom(e.target.value)} className="mt-1 block w-full border rounded-md px-3 py-2" />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Téléphone</label>
-              <input type="tel" value={tel} onChange={(e) => setTel(e.target.value)} className="mt-1 block w-full border rounded-md px-3 py-2" />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Adresse mail</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 block w-full border rounded-md px-3 py-2" />
-            </div>
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          {/* 🔹 DÉTAILS DU SÉJOUR EN PREMIER */}
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
             <div>
               <label className="block text-sm font-medium text-gray-700">Date d&apos;arrivée</label>
               <input
@@ -353,6 +332,27 @@ for (const e of ev) {
                 value={nights > 0 ? finalPrice.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }) : '—'}
                 className="mt-1 block w-full border rounded-md px-3 py-2 bg-white"
               />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Nom</label>
+              <input type="text" value={nom} onChange={(e) => setNom(e.target.value)} className="mt-1 block w-full border rounded-md px-3 py-2" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Prénom</label>
+              <input type="text" value={prenom} onChange={(e) => setPrenom(e.target.value)} className="mt-1 block w-full border rounded-md px-3 py-2" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Téléphone</label>
+              <input type="tel" value={tel} onChange={(e) => setTel(e.target.value)} className="mt-1 block w-full border rounded-md px-3 py-2" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Adresse mail</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 block w-full border rounded-md px-3 py-2" />
             </div>
           </div>
         
