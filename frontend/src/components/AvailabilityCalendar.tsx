@@ -15,8 +15,8 @@ const DEFAULT_PRICE_PER_NIGHT = 149; // € / nuit par défaut
 
 // Définition des prix spéciaux par date (inclusives)
 const SPECIAL_PRICES = [
-  { start: '2025-12-24', end: '2025-12-26', price: 200 }, // Noël 2025
-  { start: '2026-02-14', end: '2026-02-14', price: 250 }, // Saint-Valentin 
+  { start: '2025-12-24', end: '2025-12-26', price: 200 }, // Noël
+  { start: '2026-02-14', end: '2026-02-14', price: 250 }, // Saint-Valentin
   { start: '2026-02-13', end: '2026-02-13', price: 250 }, // Saint-Valentin
   { start: '2025-12-31', end: '2026-01-01', price: 250 }, // Nouvel an
 ];
@@ -28,6 +28,8 @@ export default function AvailabilityCalendar() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [disabledSet, setDisabledSet] = useState<Set<string>>(new Set());
+  const [bookedSet, setBookedSet] = useState<Set<string>>(new Set()); // nuits réservées (ICS + local)
+  const [arrivalSet, setArrivalSet] = useState<Set<string>>(new Set()); // jours d'arrivée (DTSTART)
   const [showRulesModal, setShowRulesModal] = useState(false);
 
   const [range, setRange] = useState<Date[] | null>(null);
@@ -53,45 +55,53 @@ export default function AvailabilityCalendar() {
         const ev: EventItem[] = json.events || [];
         setEvents(ev);
 
-        const s = new Set<string>();
-        
-// Limite haute : aujourd'hui + 2 ans
-const today = new Date();
-today.setHours(0, 0, 0, 0);
-const maxFuture = new Date(today);
-maxFuture.setFullYear(maxFuture.getFullYear() + 2);
+        // Sets pour :
+        // - pastSet : dates passées (vraiment désactivées)
+        // - booked  : nuits réservées (utilisées pour vérifier les conflits + styling)
+        // - arrivals: jours d'arrivée (DTSTART) pour styling et auto-sélection
+        const pastSet = new Set<string>();
+        const booked = new Set<string>();
+        const arrivals = new Set<string>();
 
-for (const e of ev) {
-  if (!e.start || !e.end) continue;
-  const start = new Date(e.start);
-  const end = new Date(e.end);
+        // Aujourd'hui + limite futur
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const maxFuture = new Date(today);
+        maxFuture.setFullYear(maxFuture.getFullYear() + 2);
 
-  // On coupe l'événement s'il dépasse trop loin dans le futur
-  const effectiveEnd = end.getTime() > maxFuture.getTime() ? maxFuture : end;
+        // 1) Extraire les nuits réservées + jours d'arrivée depuis l'ICS
+        for (const e of ev) {
+          if (!e.start || !e.end) continue;
+          const start = new Date(e.start); // DTSTART (jour d'arrivée)
+          const end = new Date(e.end);     // DTEND (jour de départ, exclusif)
 
-  // 👉 On ne bloque que jusqu'à la veille du départ
-  // Exemple : 14 → 15  => on bloque uniquement le 14
-  for (let d = new Date(start); d < effectiveEnd; d.setDate(d.getDate() + 1)) {
-    // d tourne déjà de start (14) à end-1 (14), donc OK pour les nuits
-    s.add(dateToYMD(new Date(d)));
-  }
-}
+          // Jour d'arrivée (ex: 14/02)
+          arrivals.add(dateToYMD(start));
 
-        // 2) Désactiver toutes les dates passées //
-      const limit = new Date(today); // on commence à aujourd'hui
+          // Nuits réservées : de start à end-1
+          const effectiveEnd = end.getTime() > maxFuture.getTime() ? maxFuture : end;
+          for (let d = new Date(start); d < effectiveEnd; d.setDate(d.getDate() + 1)) {
+            booked.add(dateToYMD(new Date(d)));
+          }
+        }
 
-      // On remonte par exemple jusqu'à 2 ans en arrière (suffisant pour ton cas) //
-      const past = new Date(today);
-      past.setFullYear(past.getFullYear() - 2);
+        // 2) Dates passées à désactiver complètement (pas cliquables)
+        const limit = new Date(today); // aujourd'hui
+        const past = new Date(today);
+        past.setFullYear(past.getFullYear() - 2); // jusqu'à 2 ans en arrière
 
-      for (let d = new Date(past); d < limit; d.setDate(d.getDate() + 1)) {
-        s.add(dateToYMD(new Date(d)));
-      }
-        
-        setDisabledSet(s);
+        for (let d = new Date(past); d < limit; d.setDate(d.getDate() + 1)) {
+          pastSet.add(dateToYMD(new Date(d)));
+        }
+
+        setBookedSet(booked);
+        setArrivalSet(arrivals);
+        setDisabledSet(pastSet);
       } catch (err: any) {
         setError(err.message || 'Erreur inconnue');
         setDisabledSet(new Set());
+        setBookedSet(new Set());
+        setArrivalSet(new Set());
       } finally {
         setLoading(false);
       }
@@ -108,7 +118,24 @@ for (const e of ev) {
 
   function tileDisabled({ date, view }: { date: Date; view: string }) {
     if (view !== 'month') return false;
-    return disabledSet.has(dateToYMD(date));
+    const ymd = dateToYMD(date);
+    // On ne désactive que les dates passées
+    return disabledSet.has(ymd);
+  }
+
+  function tileClassName({ date, view }: { date: Date; view: string }) {
+    if (view !== 'month') return '';
+    const ymd = dateToYMD(date);
+    const classes: string[] = [];
+
+    if (bookedSet.has(ymd)) {
+      classes.push('booked-day');      // jour avec nuit réservée
+    }
+    if (arrivalSet.has(ymd)) {
+      classes.push('arrival-day');     // jour d'arrivée
+    }
+
+    return classes.join(' ');
   }
 
   function formatDate(d: Date) {
@@ -133,38 +160,38 @@ for (const e of ev) {
       for (let d = new Date(start); d.getTime() < end.getTime(); d.setDate(d.getDate() + 1)) {
         let priceForThisNight = DEFAULT_PRICE_PER_NIGHT;
 
-for (const specialPrice of SPECIAL_PRICES) {
-  const specialStart = new Date(specialPrice.start);
-  const specialEnd = new Date(specialPrice.end);
-  
-  // On compare uniquement mois + jour (pas l'année)
-  const dMonth = d.getMonth();
-  const dDay = d.getDate();
-  
-  const startMonth = specialStart.getMonth();
-  const startDay = specialStart.getDate();
-  
-  const endMonth = specialEnd.getMonth();
-  const endDay = specialEnd.getDate();
+        for (const specialPrice of SPECIAL_PRICES) {
+          const specialStart = new Date(specialPrice.start);
+          const specialEnd = new Date(specialPrice.end);
 
-  // Cas simple : même mois (ex: 24 déc → 26 déc)
-  if (startMonth === endMonth) {
-    if (dMonth === startMonth && dDay >= startDay && dDay <= endDay) {
-      priceForThisNight = specialPrice.price;
-      break;
-    }
-  }
-  // Cas à cheval sur 2 mois (ex: 31 déc → 1er jan)
-  else {
-    if (
-      (dMonth === startMonth && dDay >= startDay) ||
-      (dMonth === endMonth && dDay <= endDay)
-    ) {
-      priceForThisNight = specialPrice.price;
-      break;
-    }
-  }
-}
+          // On compare uniquement mois + jour (pas l'année)
+          const dMonth = d.getMonth();
+          const dDay = d.getDate();
+
+          const startMonth = specialStart.getMonth();
+          const startDay = specialStart.getDate();
+
+          const endMonth = specialEnd.getMonth();
+          const endDay = specialEnd.getDate();
+
+          // Cas simple : même mois (ex: 24 déc → 26 déc)
+          if (startMonth === endMonth) {
+            if (dMonth === startMonth && dDay >= startDay && dDay <= endDay) {
+              priceForThisNight = specialPrice.price;
+              break;
+            }
+          }
+          // Cas à cheval sur 2 mois (ex: 31 déc → 1er jan)
+          else {
+            if (
+              (dMonth === startMonth && dDay >= startDay) ||
+              (dMonth === endMonth && dDay <= endDay)
+            ) {
+              priceForThisNight = specialPrice.price;
+              break;
+            }
+          }
+        }
         totalPrice += priceForThisNight;
       }
     }
@@ -215,12 +242,12 @@ for (const specialPrice of SPECIAL_PRICES) {
       const e = new Date(range[1]);
 
       // 👉 Règle : si arrivée un dimanche (0 = dimanche), minimum 2 nuits
-    const arrivalDay = s.getDay(); // 0 dimanche, 1 lundi, ..., 6 samedi
-    if (arrivalDay === 0 && nights < 2) {
-      return setFormError("Pour une arrivée le dimanche, le séjour doit être d'au moins 2 nuits.");
-    }
+      const arrivalDay = s.getDay(); // 0 dimanche, 1 lundi, ..., 6 samedi
+      if (arrivalDay === 0 && nights < 2) {
+        return setFormError("Pour une arrivée le dimanche, le séjour doit être d'au moins 2 nuits.");
+      }
       for (let d = new Date(s); d < e; d.setDate(d.getDate() + 1)) {
-        if (disabledSet.has(dateToYMD(new Date(d)))) {
+        if (bookedSet.has(dateToYMD(new Date(d)))) {
           return setFormError('La plage sélectionnée contient des dates indisponibles. Choisissez une autre plage.');
         }
       }
@@ -265,41 +292,41 @@ for (const specialPrice of SPECIAL_PRICES) {
     window.location.href = mailto;
   }
 
-const displayedPricePerNight = (() => {
-  if (range && range.length === 2) {
-    const startDay = new Date(range[0]);
-    const dMonth = startDay.getMonth();
-    const dDay = startDay.getDate();
+  const displayedPricePerNight = (() => {
+    if (range && range.length === 2) {
+      const startDay = new Date(range[0]);
+      const dMonth = startDay.getMonth();
+      const dDay = startDay.getDate();
 
-    for (const specialPrice of SPECIAL_PRICES) {
-      const specialStart = new Date(specialPrice.start);
-      const specialEnd = new Date(specialPrice.end);
+      for (const specialPrice of SPECIAL_PRICES) {
+        const specialStart = new Date(specialPrice.start);
+        const specialEnd = new Date(specialPrice.end);
 
-      const startMonth = specialStart.getMonth();
-      const startDay = specialStart.getDate();
+        const startMonth = specialStart.getMonth();
+        const startDay = specialStart.getDate();
 
-      const endMonth = specialEnd.getMonth();
-      const endDay = specialEnd.getDate();
+        const endMonth = specialEnd.getMonth();
+        const endDay = specialEnd.getDate();
 
-      // Cas simple : même mois
-      if (startMonth === endMonth) {
-        if (dMonth === startMonth && dDay >= startDay && dDay <= endDay) {
-          return specialPrice.price;
+        // Cas simple : même mois
+        if (startMonth === endMonth) {
+          if (dMonth === startMonth && dDay >= startDay && dDay <= endDay) {
+            return specialPrice.price;
+          }
         }
-      }
-      // Cas à cheval sur 2 mois
-      else {
-        if (
-          (dMonth === startMonth && dDay >= startDay) ||
-          (dMonth === endMonth && dDay <= endDay)
-        ) {
-          return specialPrice.price;
+        // Cas à cheval sur 2 mois
+        else {
+          if (
+            (dMonth === startMonth && dDay >= startDay) ||
+            (dMonth === endMonth && dDay <= endDay)
+          ) {
+            return specialPrice.price;
+          }
         }
       }
     }
-  }
-  return DEFAULT_PRICE_PER_NIGHT;
-})();
+    return DEFAULT_PRICE_PER_NIGHT;
+  })();
 
   return (
     <section id="availability" className="py-12 bg-white">
@@ -309,28 +336,57 @@ const displayedPricePerNight = (() => {
         </h3>
 
         {error && (
-  <p className="text-red-500 text-center mb-2">
-    Erreur lors du chargement des disponibilités : {error}
-  </p>
-)}
+          <p className="text-red-500 text-center mb-2">
+            Erreur lors du chargement des disponibilités : {error}
+          </p>
+        )}
 
-{loading && !error && (
-  <p className="text-gray-400 text-center mb-2 text-sm">
-    Mise à jour des disponibilités…
-  </p>
-)}
+        {loading && !error && (
+          <p className="text-gray-400 text-center mb-2 text-sm">
+            Mise à jour des disponibilités…
+          </p>
+        )}
 
         <div className="flex justify-center mb-6">
           <div className="w-full max-w-md">
             <Calendar
               className="mx-auto w-full"
               tileDisabled={tileDisabled}
+              tileClassName={tileClassName}
               selectRange={true}
               locale="fr-FR"
               onChange={(val: Date | Date[] | null) => {
-                if (Array.isArray(val)) setRange(val as Date[]);
-                else if (val instanceof Date) setRange([val]);
-                else setRange(null);
+                if (Array.isArray(val)) {
+                  // Plage complète sélectionnée
+                  setRange(val as Date[]);
+                } else if (val instanceof Date) {
+                  // Premier clic sur un jour
+                  const clicked = new Date(val);
+                  clicked.setHours(0, 0, 0, 0);
+                  const ymd = dateToYMD(clicked);
+
+                  // On ne fait rien de spécial pour les dates passées ou déjà réservées
+                  if (disabledSet.has(ymd) || bookedSet.has(ymd)) {
+                    setRange(null);
+                    return;
+                  }
+
+                  // Regarder si le lendemain est un jour d'arrivée
+                  const next = new Date(clicked);
+                  next.setDate(next.getDate() + 1);
+                  next.setHours(0, 0, 0, 0);
+                  const nextYmd = dateToYMD(next);
+
+                  if (arrivalSet.has(nextYmd) && !bookedSet.has(nextYmd)) {
+                    // 👉 Auto-sélection : nuit du jour cliqué vers le lendemain
+                    setRange([clicked, next]);
+                  } else {
+                    // Comportement normal : on attend un deuxième clic
+                    setRange([clicked]);
+                  }
+                } else {
+                  setRange(null);
+                }
               }}
               value={range as any}
             />
@@ -339,14 +395,14 @@ const displayedPricePerNight = (() => {
 
         <div className="mb-6 text-center">
           <p className="text-sm text-gray-600">
-            Sélectionnez vos dates d&apos;arrivée et de départ sur le calendrier. 
+            Sélectionnez vos dates d&apos;arrivée et de départ sur le calendrier.
             Les jours gris sont déjà réservés.
           </p>
         </div>
 
         <form className="bg-gray-50 p-6 rounded-md shadow-sm" onSubmit={(e) => e.preventDefault()}>
           {/* 🔹 DÉTAILS DU SÉJOUR EN PREMIER */}
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
             <div>
               <label className="block text-sm font-medium text-gray-700">Date d&apos;arrivée</label>
               <input
@@ -397,7 +453,7 @@ const displayedPricePerNight = (() => {
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 block w-full border rounded-md px-3 py-2" />
             </div>
           </div>
-        
+
           {formError && <p className="mt-4 text-red-500">{formError}</p>}
 
           {!isFormValid && nights > 0 && (
@@ -466,37 +522,37 @@ const displayedPricePerNight = (() => {
 
                             try {
                               const order = await actions.order!.capture();
-console.log('Paiement capturé (client) :', order);
+                              console.log('Paiement capturé (client) :', order);
 
-// On envoie des dates "pures" AAAA-MM-JJ pour éviter tout souci de fuseau
-const normalizedRange = Array.isArray(range) && range.length === 2
-  ? [
-      (() => {
-        const d = new Date(range[0] as Date);
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${y}-${m}-${day}`; // date d'arrivée
-      })(),
-      (() => {
-        const d = new Date(range[1] as Date);
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${y}-${m}-${day}`; // date de départ
-      })(),
-    ]
-  : range;
+                              // On envoie des dates "pures" AAAA-MM-JJ pour éviter tout souci de fuseau
+                              const normalizedRange = Array.isArray(range) && range.length === 2
+                                ? [
+                                    (() => {
+                                      const d = new Date(range[0] as Date);
+                                      const y = d.getFullYear();
+                                      const m = String(d.getMonth() + 1).padStart(2, '0');
+                                      const day = String(d.getDate()).padStart(2, '0');
+                                      return `${y}-${m}-${day}`; // date d'arrivée
+                                    })(),
+                                    (() => {
+                                      const d = new Date(range[1] as Date);
+                                      const y = d.getFullYear();
+                                      const m = String(d.getMonth() + 1).padStart(2, '0');
+                                      const day = String(d.getDate()).padStart(2, '0');
+                                      return `${y}-${m}-${day}`; // date de départ
+                                    })(),
+                                  ]
+                                : range;
 
-const reservationData = {
-  nom,
-  prenom,
-  tel,
-  email,
-  range: normalizedRange, // maintenant ["2025-12-16", "2025-12-17"]
-  nights,
-  finalPrice,
-};
+                              const reservationData = {
+                                nom,
+                                prenom,
+                                tel,
+                                email,
+                                range: normalizedRange,
+                                nights,
+                                finalPrice,
+                              };
 
                               console.log('Avant fetch -> envoi au backend :', { orderId: data.orderID, reservationData });
 
@@ -563,7 +619,7 @@ const reservationData = {
                   <button
                     type="button"
                     onClick={openMailClient}
-                    className="bg-green-600 text-black text-center py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none"
+                    className="bg-green-600 text-white text-center py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none"
                     disabled={!isFormValid}
                   >
                     ✉️ Contacter par email avec formulaire
