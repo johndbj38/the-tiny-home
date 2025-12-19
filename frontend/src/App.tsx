@@ -173,11 +173,11 @@ function App() {
               privilégié à de nombreuses attractions :
             </p>
             <ul className="space-y-2 text-gray-600">
-              <li>• À quelques minutes du lac du Bourget</li>
+              <li>• À 5 minutes du lac du Bourget</li>
               <li>• Proche d'Aix-les-Bains et ses thermes</li>
               <li>• À proximité de Chambéry et sa vieille ville</li>
               <li>• Accès aux sentiers de randonnée</li>
-              <li>• 30 minutes des stations de ski</li>
+              <li>• 30 minutes des stations de ski la Feclaz, le Revard. </li>
               <li>• Accès direct à l'autoroute A41</li>
             </ul>
           </div>
@@ -197,6 +197,7 @@ function App() {
                 <li>Ménage inclus</li>
                 <li>Nous demandons de rendre le logement rangé comme à votre arrivée</li>
                 <li>Arrivée/check-in 16h-21h Départ/check-out à 12h</li>
+                <li>Une place de parking gratuite sur place</li>
               </ul>
             </div>
           </div>
