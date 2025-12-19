@@ -11,12 +11,12 @@ html {
 /* Jour avec une nuit réservée (gris complet) */
 .react-calendar__tile.booked-day {
   background-color: #6b7280; /* gris foncé */
-  color: #ffffff;            /* texte blanc pour contraste */
+  color: #0C0A09;            /* texte blanc pour contraste */
 }
 
 /* Jour d'arrivée : HAUT blanc, BAS gris foncé */
 .react-calendar__tile.arrival-day {
-  background: linear-gradient(to bottom, #ffffff 50%, #6b7280 50%);
+  background: linear-gradient(to bottom, #F1F5F9 50%, #6b7280 50%);
   color: #1f2937; /* texte gris très foncé */
 }
 
