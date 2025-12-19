@@ -432,7 +432,7 @@ export default function AvailabilityCalendar() {
   </p>
   <div className="text-xs text-gray-500 space-y-1">
     <p>🔲 <strong>Cases entièrement grises</strong> : nuits déjà réservées (non disponibles).</p>
-    <p>◧ <strong>Cases moitié grises</strong> : jour d&apos;arrivée d&apos;une autre réservation → vous pouvez partir ce jour-là.</p>
+    <p>◧ <strong>Cases moitié grises</strong> : → vous pouvez partir ce jour-là.</p>
   </div>
 </div>
 
