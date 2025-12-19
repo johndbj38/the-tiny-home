@@ -23,6 +23,6 @@ html {
 /* Si un jour est à la fois "booked" + "arrival" (cas standard pour début de séjour avec nuit libre avant),
    on garde l'affichage "moitié blanc / moitié gris". */
 .react-calendar__tile.booked-day.arrival-day {
-  background: linear-gradient(to bottom, #FB2C36 50%, #6b7280 50%);
+  background: linear-gradient(to bottom, #FAFAF9 50%, #6b7280 50%);
   color: #111827;
 }
