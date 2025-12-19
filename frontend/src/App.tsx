@@ -186,7 +186,7 @@ function App() {
           <div className="flex-1 min-w-[300px]" id="informations">
             <h2 className="text-3xl font-bold mb-6">Informations</h2>
             <p className="text-gray-700 mb-4">
-              La Tiny House fait face au lac du Bourget d'un côté et au Massif
+              La Tiny Home fait face au lac du Bourget d'un côté et au Massif
               des Bauges de l'autre. Elle comprend un séjour-cuisine avec un
               coin nuit et une salle de bains.
             </p>
