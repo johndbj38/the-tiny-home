@@ -196,7 +196,7 @@ function App() {
                 <li>Linge de lit, serviettes de bain et chaussons fournis</li>
                 <li>Ménage inclus</li>
                 <li>Nous demandons de rendre le logement rangé comme à votre arrivée</li>
-                <li>Arrivée/check-in 16h a 21h Départ/check-out à 12h</li>
+                <li>Arrivée/check-in 16h-21h Départ/check-out à 12h</li>
               </ul>
             </div>
           </div>
