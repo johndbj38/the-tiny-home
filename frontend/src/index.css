@@ -8,20 +8,22 @@ html {
 
 /* === Styles pour le calendrier React === */
 
-/* Jour avec une nuit réservée (gris complet) */
+/* Nuit réservée : gris foncé plein */
 .react-calendar__tile.booked-day {
   background-color: #6b7280; /* gris foncé */
-  color: #ffffff;            /* texte blanc pour contraste */
+  color: #ffffff;
 }
 
-/* Jour d'arrivée : HAUT blanc, BAS gris foncé */
+/* Jour d'arrivée : moitié haut blanc, moitié bas gris foncé */
 .react-calendar__tile.arrival-day {
   background: linear-gradient(to bottom, #ffffff 50%, #6b7280 50%);
-  color: #1f2937; /* texte gris très foncé */
+  color: #111827; /* presque noir pour bien lire sur le blanc */
 }
 
-/* Si un jour est à la fois arrival + booked (cas rare) */
+/* Un cas où la tuile a EN MÊME TEMPS booked-day + arrival-day
+   (en théorie rare, et déjà filtré côté JS)
+   Mais au cas où : on force le full gris foncé */
 .react-calendar__tile.booked-day.arrival-day {
-  background: linear-gradient(to bottom, #9ca3af 50%, #4b5563 50%);
+  background-color: #6b7280;
   color: #ffffff;
 }
