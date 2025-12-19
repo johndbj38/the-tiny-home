@@ -81,15 +81,20 @@ useEffect(() => {
       }
 
       // 2) Cas particulier : départ + arrivée le même jour
-      //    Si un jour est à la fois:
-      //    - jour d'arrivée d'un event A
-      //    - ET nuit occupée pour un event B
-      //    alors on le garde comme 100% "booked" (pas moitié-moitié)
-      for (const ymd of Array.from(arrivals)) {
-        if (booked.has(ymd)) {
-          arrivals.delete(ymd);
-        }
-      }
+//    On NE garde "arrival-day" QUE si la nuit précédente est libre.
+//    Si la nuit précédente est déjà réservée, c'est un jour de rotation complet → gris plein.
+for (const ymd of Array.from(arrivals)) {
+  const [year, month, day] = ymd.split('-').map(Number);
+  const d = new Date(year, month - 1, day);
+  d.setDate(d.getDate() - 1);
+  d.setHours(0, 0, 0, 0);
+  const prevYmd = dateToYMD(d);
+
+  if (booked.has(prevYmd)) {
+    // La nuit précédente est occupée → pas un "vrai" jour d'arrivée visuel
+    arrivals.delete(ymd);
+  }
+}
 
       // 3) Dates passées
       const past = new Date(today);
