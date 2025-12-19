@@ -367,6 +367,11 @@ for (const ymd of Array.from(arrivals)) {
               selectRange={true}
               locale="fr-FR"
              onChange={(val: Date | Date[] | null) => {
+               if (loading) {
+    // On ignore tout clic tant que les dispos ne sont pas chargées
+    return;           
+  }
+               
   if (Array.isArray(val)) {
     // Plage complète sélectionnée (2e clic)
     const [start, end] = val;
