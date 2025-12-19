@@ -10,19 +10,19 @@ html {
 
 /* Nuit réservée : gris foncé plein */
 .react-calendar__tile.booked-day {
-  background-color: #6b7280; /* gris foncé */
+  background-color: #D6D3D1; /* gris foncé */
   color: #ffffff;
 }
 
 /* Jour d'arrivée : moitié haut blanc, moitié bas gris foncé */
 .react-calendar__tile.arrival-day {
-  background: linear-gradient(to bottom, #ffffff 50%, #6b7280 50%);
+  background: linear-gradient(to bottom, #ffffff 50%, #D6D3D1 50%);
   color: #111827; /* presque noir pour bien lire sur le blanc */
 }
 
 /* Si un jour est à la fois "booked" + "arrival" (cas standard pour début de séjour avec nuit libre avant),
    on garde l'affichage "moitié blanc / moitié gris". */
 .react-calendar__tile.booked-day.arrival-day {
-  background: linear-gradient(to bottom, #FAFAF9 50%, #6b7280 50%);
+  background: linear-gradient(to bottom, #FAFAF9 50%, #D6D3D1 50%);
   color: #111827;
 }
