@@ -10,18 +10,18 @@ html {
 
 /* Jour avec une nuit réservée (gris complet) */
 .react-calendar__tile.booked-day {
-  background-color: #9ca3af; /* gris moyen */
+  background-color: #6b7280; /* gris foncé */
   color: #ffffff;            /* texte blanc pour contraste */
 }
 
-/* Jour d'arrivée : moitié BASSE grise, moitié HAUTE blanche */
+/* Jour d'arrivée : HAUT blanc, BAS gris foncé */
 .react-calendar__tile.arrival-day {
-  background: linear-gradient(to top, #9ca3af 50%, #ffffff 50%);
-  color: #374151; /* texte gris foncé */
+  background: linear-gradient(to bottom, #ffffff 50%, #6b7280 50%);
+  color: #1f2937; /* texte gris très foncé */
 }
 
-/* Si un jour est à la fois arrival + booked (cas rare mais possible) */
+/* Si un jour est à la fois arrival + booked (cas rare) */
 .react-calendar__tile.booked-day.arrival-day {
-  background: linear-gradient(to top, #6b7280 50%, #9ca3af 50%);
+  background: linear-gradient(to bottom, #9ca3af 50%, #4b5563 50%);
   color: #ffffff;
 }
