@@ -359,13 +359,27 @@ for (const ymd of Array.from(arrivals)) {
         )}
 
         <div className="flex justify-center mb-6">
-          <div className="w-full max-w-md">
-            <Calendar
-              className="mx-auto w-full"
-              tileDisabled={tileDisabled}
-              tileClassName={tileClassName}
-              selectRange={true}
-              locale="fr-FR"
+  <div className="w-full max-w-md relative">
+    {/* Overlay pendant le chargement */}
+    {loading && (
+      <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80">
+        <p className="text-sm text-gray-500 animate-pulse">
+          Chargement des disponibilités…
+        </p>
+      </div>
+    )}
+
+    <Calendar
+      className="mx-auto w-full"
+      tileDisabled={tileDisabled}
+      tileClassName={tileClassName}
+      selectRange={true}
+      locale="fr-FR"
+      onChange={...}  // même handler que ci-dessus, avec le if (loading) return;
+      value={range as any}
+    />
+  </div>
+</div>
              onChange={(val: Date | Date[] | null) => {
                if (loading) {
     // On ignore tout clic tant que les dispos ne sont pas chargées
