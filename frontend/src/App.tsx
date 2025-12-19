@@ -193,7 +193,7 @@ function App() {
             <div className="text-gray-700 mb-6">
               <p className="mb-2 font-semibold">Services inclus :</p>
               <ul className="list-disc pl-5 space-y-1">
-                <li>Linge de lit, serviettes de bain et chaussons fournis</li>
+                <li>Linge de lit, serviettes de bains, peignoirs et chaussons fournis</li>
                 <li>Ménage inclus</li>
                 <li>Nous demandons de rendre le logement rangé comme à votre arrivée</li>
                 <li>Arrivée/check-in 16h-21h Départ/check-out à 12h</li>
