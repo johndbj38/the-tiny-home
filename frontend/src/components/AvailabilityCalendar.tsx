@@ -426,12 +426,15 @@ export default function AvailabilityCalendar() {
           </div>
         </div>
 
-        <div className="mb-6 text-center">
-          <p className="text-sm text-gray-600">
-            Sélectionnez vos dates d&apos;arrivée et de départ sur le calendrier.
-            Les jours gris sont déjà réservés.
-          </p>
-        </div>
+        <div className="mb-6 text-center space-y-2">
+  <p className="text-sm text-gray-600">
+    Sélectionnez vos dates d&apos;arrivée et de départ sur le calendrier.
+  </p>
+  <div className="text-xs text-gray-500 space-y-1">
+    <p>🔲 <strong>Cases entièrement grises</strong> : nuits déjà réservées (non disponibles).</p>
+    <p>◧ <strong>Cases moitié grises</strong> : jour d&apos;arrivée d&apos;une autre réservation → vous pouvez partir ce jour-là.</p>
+  </div>
+</div>
 
         <form className="bg-gray-50 p-6 rounded-md shadow-sm" onSubmit={(e) => e.preventDefault()}>
           {/* 🔹 DÉTAILS DU SÉJOUR EN PREMIER */}
