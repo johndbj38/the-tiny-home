@@ -44,70 +44,78 @@ export default function AvailabilityCalendar() {
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000';
 
-  useEffect(() => {
-    async function fetchEvents() {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/availability`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-        const ev: EventItem[] = json.events || [];
-        setEvents(ev);
+useEffect(() => {
+  async function fetchEvents() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/availability`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const ev: EventItem[] = json.events || [];
+      setEvents(ev);
 
-        // Sets pour :
-        // - pastSet : dates passées (vraiment désactivées)
-        // - booked  : nuits réservées (utilisées pour vérifier les conflits + styling)
-        // - arrivals: jours d'arrivée (DTSTART) pour styling et auto-sélection
-        const pastSet = new Set<string>();
-        const booked = new Set<string>();
-        const arrivals = new Set<string>();
+      // Sets pour :
+      // - pastSet : dates passées (vraiment désactivées)
+      // - booked  : nuits réservées (utilisées pour vérifier les conflits + styling)
+      // - arrivals: jours d'arrivée (DTSTART) pour styling et auto-sélection
+      const pastSet = new Set<string>();
+      const booked = new Set<string>();
+      const arrivals = new Set<string>();
 
-        // Aujourd'hui + limite futur
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const maxFuture = new Date(today);
-        maxFuture.setFullYear(maxFuture.getFullYear() + 2);
+      // Aujourd'hui + limite futur
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const maxFuture = new Date(today);
+      maxFuture.setFullYear(maxFuture.getFullYear() + 2);
 
-        // 1) Extraire les nuits réservées + jours d'arrivée depuis l'ICS
-        for (const e of ev) {
-          if (!e.start || !e.end) continue;
-          const start = new Date(e.start); // DTSTART (jour d'arrivée)
-          const end = new Date(e.end);     // DTEND (jour de départ, exclusif)
+      // 1) Extraire les nuits réservées + jours d'arrivée depuis l'ICS
+      for (const e of ev) {
+        if (!e.start || !e.end) continue;
+        const start = new Date(e.start); // DTSTART (jour d'arrivée)
+        const end = new Date(e.end);     // DTEND (jour de départ, exclusif)
 
-          // Jour d'arrivée (ex: 14/02)
-          arrivals.add(dateToYMD(start));
+        // Jour d'arrivée (ex: 14/02)
+        arrivals.add(dateToYMD(start));
 
-          // Nuits réservées : de start à end-1
-          const effectiveEnd = end.getTime() > maxFuture.getTime() ? maxFuture : end;
-          for (let d = new Date(start); d < effectiveEnd; d.setDate(d.getDate() + 1)) {
-            booked.add(dateToYMD(new Date(d)));
-          }
+        // Nuits réservées : de start à end-1
+        const effectiveEnd = end.getTime() > maxFuture.getTime() ? maxFuture : end;
+        for (let d = new Date(start); d < effectiveEnd; d.setDate(d.getDate() + 1)) {
+          booked.add(dateToYMD(new Date(d)));
         }
-
-        // 2) Dates passées à désactiver complètement (pas cliquables)
-        const limit = new Date(today); // aujourd'hui
-        const past = new Date(today);
-        past.setFullYear(past.getFullYear() - 2); // jusqu'à 2 ans en arrière
-
-        for (let d = new Date(past); d < limit; d.setDate(d.getDate() + 1)) {
-          pastSet.add(dateToYMD(new Date(d)));
-        }
-
-        setBookedSet(booked);
-        setArrivalSet(arrivals);
-        setDisabledSet(pastSet);
-      } catch (err: any) {
-        setError(err.message || 'Erreur inconnue');
-        setDisabledSet(new Set());
-        setBookedSet(new Set());
-        setArrivalSet(new Set());
-      } finally {
-        setLoading(false);
       }
+
+      // 2) Si un jour est à la fois arrivée ET nuit réservée → on le retire des arrivées
+      //    (car c'est un départ + arrivée le même jour = vraiment bloqué)
+      for (const ymd of arrivals) {
+        if (booked.has(ymd)) {
+          arrivals.delete(ymd);
+        }
+      }
+
+      // 3) Dates passées à désactiver complètement (pas cliquables)
+      const limit = new Date(today); // aujourd'hui
+      const past = new Date(today);
+      past.setFullYear(past.getFullYear() - 2); // jusqu'à 2 ans en arrière
+
+      for (let d = new Date(past); d < limit; d.setDate(d.getDate() + 1)) {
+        pastSet.add(dateToYMD(new Date(d)));
+      }
+
+      setBookedSet(booked);
+      setArrivalSet(arrivals);
+      setDisabledSet(pastSet);
+    } catch (err: any) {
+      setError(err.message || 'Erreur inconnue');
+      setDisabledSet(new Set());
+      setBookedSet(new Set());
+      setArrivalSet(new Set());
+    } finally {
+      setLoading(false);
     }
-    fetchEvents();
-  }, [API_BASE_URL]);
+  }
+  fetchEvents();
+}, [API_BASE_URL]);
 
   function dateToYMD(d: Date) {
     const y = d.getFullYear();
