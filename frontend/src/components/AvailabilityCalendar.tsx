@@ -547,16 +547,23 @@ for (const ymd of Array.from(arrivals)) {
             </label>
           </div>
 
+         {/* Section des options de réservation */}
           {(() => {
             const AIRBNB_LINK = 'https://www.airbnb.fr/rooms/746228202767512240?guests=1&adults=1&s=67&unique_share_id=d62985eb-ed51-4f76-98c3-fa9363f1486b';
             const airbnbApproxPrice = Math.round(finalPrice * 1.2 * 100) / 100;
             const airbnbPriceStr = airbnbApproxPrice.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
 
             return (
-              <div>
-                <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* PayPal */}
-                <PayPalScriptProvider options={{ "client-id": import.meta.env.VITE_PAYPAL_CLIENT_ID, currency: "EUR" }}>
+              <div className="mt-8 space-y-8">
+                
+                {/* Option 1: Direct (PayPal/Carte) */}
+                <div className="w-full">
+                  <div className="text-center mb-4">
+                    <p className="text-sm font-bold text-gray-800">Paiement sécurisé par Carte Bancaire ou PayPal</p>
+                    <p className="text-xs text-gray-500">Réservation immédiate et sans frais de plateforme</p>
+                  </div>
+                  
+                  <PayPalScriptProvider options={{ "client-id": import.meta.env.VITE_PAYPAL_CLIENT_ID, currency: "EUR" }}>
                     <div className="w-full flex justify-center">
                       <div className={`${!isFormValid ? 'opacity-50 pointer-events-none' : ''}`}>
                         <PayPalButtons
@@ -589,7 +596,6 @@ for (const ymd of Array.from(arrivals)) {
                               const order = await actions.order!.capture();
                               console.log('Paiement capturé (client) :', order);
 
-                              // On envoie des dates "pures" AAAA-MM-JJ pour éviter tout souci de fuseau
                               const normalizedRange = Array.isArray(range) && range.length === 2
                                 ? [
                                     (() => {
@@ -597,14 +603,14 @@ for (const ymd of Array.from(arrivals)) {
                                       const y = d.getFullYear();
                                       const m = String(d.getMonth() + 1).padStart(2, '0');
                                       const day = String(d.getDate()).padStart(2, '0');
-                                      return `${y}-${m}-${day}`; // date d'arrivée
+                                      return `${y}-${m}-${day}`;
                                     })(),
                                     (() => {
                                       const d = new Date(range[1] as Date);
                                       const y = d.getFullYear();
                                       const m = String(d.getMonth() + 1).padStart(2, '0');
                                       const day = String(d.getDate()).padStart(2, '0');
-                                      return `${y}-${m}-${day}`; // date de départ
+                                      return `${y}-${m}-${day}`;
                                     })(),
                                   ]
                                 : range;
@@ -651,47 +657,54 @@ for (const ymd of Array.from(arrivals)) {
                       </div>
                     </div>
                   </PayPalScriptProvider>
-
-                  {/* Airbnb */}
-                  <a
-                    href={isFormValid ? AIRBNB_LINK : undefined}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    role="button"
-                    aria-disabled={!isFormValid}
-                    onClick={(e) => {
-                      if (!isFormValid) {
-                        e.preventDefault();
-                        alert('Merci de remplir toutes vos informations avant de réserver sur Airbnb.');
-                      }
-                    }}
-                    className={`block text-white text-center py-3 px-4 rounded-lg font-semibold transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 ${
-                      !isFormValid ? 'opacity-50 pointer-events-none' : ''
-                    }`}
-                    style={{ backgroundColor: '#FF5A5F' }}
-                  >
-                    {isFormValid ? (
-                      <>
-                        🎒 Réserver sur Airbnb — <span className="font-bold">≈ {airbnbPriceStr}</span>
-                        <span className="block text-xs font-normal mt-1">Inclus les frais plateforme</span>
-                      </>
-                    ) : (
-                      'Remplissez le formulaire'
-                    )}
-                  </a>
-
-                  {/* Email */}
-                  <button
-                    type="button"
-                    onClick={openMailClient}
-                    className="bg-green-600 text-white text-center py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none"
-                    disabled={!isFormValid}
-                  >
-                    ✉️ Contacter par email avec formulaire
-                  </button>
                 </div>
 
-                <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                {/* Séparateur discret */}
+                <div className="relative flex py-2 items-center">
+                  <div className="flex-grow border-t border-gray-200"></div>
+                  <span className="flex-shrink mx-4 text-gray-400 text-xs uppercase">Ou</span>
+                  <div className="flex-grow border-t border-gray-200"></div>
+                </div>
+
+                {/* Option 2 & 3: Airbnb et Contact */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <p className="text-center text-xs font-medium text-gray-600">Réserver via la plateforme</p>
+                    <a
+                      href={isFormValid ? AIRBNB_LINK : undefined}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => {
+                        if (!isFormValid) {
+                          e.preventDefault();
+                          alert('Merci de remplir toutes vos informations avant de réserver sur Airbnb.');
+                        }
+                      }}
+                      className={`block text-white text-center py-3 px-4 rounded-lg font-semibold transition-all duration-200 shadow-md hover:shadow-lg ${
+                        !isFormValid ? 'opacity-50 pointer-events-none' : ''
+                      }`}
+                      style={{ backgroundColor: '#FF5A5F' }}
+                    >
+                      🎒 Réserver sur Airbnb
+                      <span className="block text-xs font-normal mt-1">≈ {airbnbPriceStr} (frais inclus)</span>
+                    </a>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-center text-xs font-medium text-gray-600">Une question ? Une demande spéciale ?</p>
+                    <button
+                      type="button"
+                      onClick={openMailClient}
+                      className="w-full bg-green-600 text-white text-center py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
+                      disabled={!isFormValid}
+                    >
+                      ✉️ Nous contacter par Email
+                    </button>
+                  </div>
+                </div>
+
+                {/* Détails du séjour */}
+                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <div className="text-sm text-gray-700">
                     <p className="font-semibold mb-2">📊 Détails du séjour :</p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
