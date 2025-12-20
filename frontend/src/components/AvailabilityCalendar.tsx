@@ -556,38 +556,49 @@ for (const ymd of Array.from(arrivals)) {
               <div>
                 <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* PayPal */}
-                  <PayPalScriptProvider options={{ "client-id": import.meta.env.VITE_PAYPAL_CLIENT_ID, currency: "EUR" }}>
-                    <div className="w-full flex justify-center">
-                      <div className={`${!isFormValid ? 'opacity-50 pointer-events-none' : ''}`}>
-                        <PayPalButtons
-                          style={{ layout: "vertical", color: "blue", shape: "rect", label: "paypal" }}
-                          disabled={!isFormValid}
-                          forceReRender={[finalPrice, nights, isFormValid]}
-                          createOrder={(data, actions) => {
-                            if (!isFormValid) {
-                              alert('Merci de remplir toutes vos informations avant de payer.');
-                              return Promise.reject();
-                            }
-                            return actions.order.create({
-                              purchase_units: [
-                                {
-                                  amount: {
-                                    value: finalPrice.toFixed(2),
-                                    currency_code: "EUR",
-                                  },
-                                  description: `Séjour The Tiny Home - ${nights} nuit(s)`,
-                                },
-                              ],
-                              intent: 'CAPTURE'
-                            });
-                          }}
-                          onApprove={async (data, actions) => {
-                            console.log('onApprove déclenché avec orderID:', data.orderID);
-                            if (!actions) return;
+                  <div className="w-full">
+  <div className="text-center mb-3">
+    <p className="text-sm font-semibold text-gray-700">💳 Paiement sécurisé</p>
+    <p className="text-xs text-gray-500">Carte Bancaire ou PayPal</p>
+  </div>
+  
+  <PayPalScriptProvider options={{ "client-id": import.meta.env.VITE_PAYPAL_CLIENT_ID, currency: "EUR" }}>
+    <div className="w-full flex justify-center">
+      <div className={`${!isFormValid ? 'opacity-50 pointer-events-none' : ''}`}>
+        <PayPalButtons
+          style={{ 
+            layout: "vertical", 
+            color: "gold", 
+            shape: "rect", 
+            label: "pay" 
+          }}
+          disabled={!isFormValid}
+          forceReRender={[finalPrice, nights, isFormValid]}
+          createOrder={(data, actions) => {
+            if (!isFormValid) {
+              alert('Merci de remplir toutes vos informations avant de payer.');
+              return Promise.reject();
+            }
+            return actions.order.create({
+              purchase_units: [
+                {
+                  amount: {
+                    value: finalPrice.toFixed(2),
+                    currency_code: "EUR",
+                  },
+                  description: `Séjour The Tiny Home - ${nights} nuit(s)`,
+                },
+              ],
+              intent: 'CAPTURE'
+            });
+          }}
+          onApprove={async (data, actions) => {
+            console.log('onApprove déclenché avec orderID:', data.orderID);
+            if (!actions) return;
 
-                            try {
-                              const order = await actions.order!.capture();
-                              console.log('Paiement capturé (client) :', order);
+            try {
+              const order = await actions.order!.capture();
+              console.log('Paiement capturé (client) :', order);
 
                               // On envoie des dates "pures" AAAA-MM-JJ pour éviter tout souci de fuseau
                               const normalizedRange = Array.isArray(range) && range.length === 2
