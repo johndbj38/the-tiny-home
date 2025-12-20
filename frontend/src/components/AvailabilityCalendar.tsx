@@ -28,8 +28,8 @@ export default function AvailabilityCalendar() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [disabledSet, setDisabledSet] = useState<Set<string>>(new Set());
-  const [bookedSet, setBookedSet] = useState<Set<string>>(new Set()); // nuits réservées (ICS + local)
-  const [arrivalSet, setArrivalSet] = useState<Set<string>>(new Set()); // jours d'arrivée (DTSTART)
+  const [bookedSet, setBookedSet] = useState<Set<string>>(new Set());
+  const [arrivalSet, setArrivalSet] = useState<Set<string>>(new Set());
   const [showRulesModal, setShowRulesModal] = useState(false);
 
   const [range, setRange] = useState<Date[] | null>(null);
@@ -44,80 +44,74 @@ export default function AvailabilityCalendar() {
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000';
 
-useEffect(() => {
-  async function fetchEvents() {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/availability`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      const ev: EventItem[] = json.events || [];
-      setEvents(ev);
+  useEffect(() => {
+    async function fetchEvents() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/availability`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        const ev: EventItem[] = json.events || [];
+        setEvents(ev);
 
-      const pastSet = new Set<string>();
-      const booked = new Set<string>();
-      const arrivals = new Set<string>();
+        const pastSet = new Set<string>();
+        const booked = new Set<string>();
+        const arrivals = new Set<string>();
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const maxFuture = new Date(today);
-      maxFuture.setFullYear(maxFuture.getFullYear() + 2);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const maxFuture = new Date(today);
+        maxFuture.setFullYear(maxFuture.getFullYear() + 2);
 
-      // 1) Construire bookedSet (nuits) + arrivalSet (jours d'arrivée)
-      for (const e of ev) {
-        if (!e.start || !e.end) continue;
-        const start = new Date(e.start); // arrivée
-        const end = new Date(e.end);     // départ (exclusif)
+        for (const e of ev) {
+          if (!e.start || !e.end) continue;
+          const start = new Date(e.start);
+          const end = new Date(e.end);
 
-        const startYmd = dateToYMD(start);
-        arrivals.add(startYmd);
+          const startYmd = dateToYMD(start);
+          arrivals.add(startYmd);
 
-        const effectiveEnd = end.getTime() > maxFuture.getTime() ? maxFuture : end;
+          const effectiveEnd = end.getTime() > maxFuture.getTime() ? maxFuture : end;
 
-        for (let d = new Date(start); d < effectiveEnd; d.setDate(d.getDate() + 1)) {
-          booked.add(dateToYMD(new Date(d)));
+          for (let d = new Date(start); d < effectiveEnd; d.setDate(d.getDate() + 1)) {
+            booked.add(dateToYMD(new Date(d)));
+          }
         }
+
+        for (const ymd of Array.from(arrivals)) {
+          const [year, month, day] = ymd.split('-').map(Number);
+          const d = new Date(year, month - 1, day);
+          d.setDate(d.getDate() - 1);
+          d.setHours(0, 0, 0, 0);
+          const prevYmd = dateToYMD(d);
+
+          if (booked.has(prevYmd)) {
+            arrivals.delete(ymd);
+          }
+        }
+
+        const past = new Date(today);
+        past.setFullYear(past.getFullYear() - 2);
+
+        for (let d = new Date(past); d < today; d.setDate(d.getDate() + 1)) {
+          pastSet.add(dateToYMD(new Date(d)));
+        }
+
+        setBookedSet(booked);
+        setArrivalSet(arrivals);
+        setDisabledSet(pastSet);
+      } catch (err: any) {
+        setError(err.message || 'Erreur inconnue');
+        setDisabledSet(new Set());
+        setBookedSet(new Set());
+        setArrivalSet(new Set());
+      } finally {
+        setLoading(false);
       }
-
-      // 2) Cas particulier : départ + arrivée le même jour
-//    On NE garde "arrival-day" QUE si la nuit précédente est libre.
-//    Si la nuit précédente est déjà réservée, c'est un jour de rotation complet → gris plein.
-for (const ymd of Array.from(arrivals)) {
-  const [year, month, day] = ymd.split('-').map(Number);
-  const d = new Date(year, month - 1, day);
-  d.setDate(d.getDate() - 1);
-  d.setHours(0, 0, 0, 0);
-  const prevYmd = dateToYMD(d);
-
-  if (booked.has(prevYmd)) {
-    // La nuit précédente est occupée → pas un "vrai" jour d'arrivée visuel
-    arrivals.delete(ymd);
-  }
-}
-
-      // 3) Dates passées
-      const past = new Date(today);
-      past.setFullYear(past.getFullYear() - 2);
-
-      for (let d = new Date(past); d < today; d.setDate(d.getDate() + 1)) {
-        pastSet.add(dateToYMD(new Date(d)));
-      }
-
-      setBookedSet(booked);
-      setArrivalSet(arrivals);
-      setDisabledSet(pastSet);
-    } catch (err: any) {
-      setError(err.message || 'Erreur inconnue');
-      setDisabledSet(new Set());
-      setBookedSet(new Set());
-      setArrivalSet(new Set());
-    } finally {
-      setLoading(false);
     }
-  }
-  fetchEvents();
-}, [API_BASE_URL]);
+    fetchEvents();
+  }, [API_BASE_URL]);
 
   function dateToYMD(d: Date) {
     const y = d.getFullYear();
@@ -127,23 +121,21 @@ for (const ymd of Array.from(arrivals)) {
   }
 
   function tileDisabled({ date, view }: { date: Date; view: string }) {
-  if (view !== 'month') return false;
-  const ymd = dateToYMD(date);
+    if (view !== 'month') return false;
+    const ymd = dateToYMD(date);
+    return disabledSet.has(ymd);
+  }
 
-  // ❌ On bloque vraiment seulement :
-  // - les dates passées
-  return disabledSet.has(ymd);
-}
   function tileClassName({ date, view }: { date: Date; view: string }) {
     if (view !== 'month') return '';
     const ymd = dateToYMD(date);
     const classes: string[] = [];
 
     if (bookedSet.has(ymd)) {
-      classes.push('booked-day');      // jour avec nuit réservée
+      classes.push('booked-day');
     }
     if (arrivalSet.has(ymd)) {
-      classes.push('arrival-day');     // jour d'arrivée
+      classes.push('arrival-day');
     }
 
     return classes.join(' ');
@@ -175,7 +167,6 @@ for (const ymd of Array.from(arrivals)) {
           const specialStart = new Date(specialPrice.start);
           const specialEnd = new Date(specialPrice.end);
 
-          // On compare uniquement mois + jour (pas l'année)
           const dMonth = d.getMonth();
           const dDay = d.getDate();
 
@@ -185,15 +176,12 @@ for (const ymd of Array.from(arrivals)) {
           const endMonth = specialEnd.getMonth();
           const endDay = specialEnd.getDate();
 
-          // Cas simple : même mois (ex: 24 déc → 26 déc)
           if (startMonth === endMonth) {
             if (dMonth === startMonth && dDay >= startDay && dDay <= endDay) {
               priceForThisNight = specialPrice.price;
               break;
             }
-          }
-          // Cas à cheval sur 2 mois (ex: 31 déc → 1er jan)
-          else {
+          } else {
             if (
               (dMonth === startMonth && dDay >= startDay) ||
               (dMonth === endMonth && dDay <= endDay)
@@ -252,8 +240,7 @@ for (const ymd of Array.from(arrivals)) {
       const s = new Date(range[0]);
       const e = new Date(range[1]);
 
-      // 👉 Règle : si arrivée un dimanche (0 = dimanche), minimum 2 nuits
-      const arrivalDay = s.getDay(); // 0 dimanche, 1 lundi, ..., 6 samedi
+      const arrivalDay = s.getDay();
       if (arrivalDay === 0 && nights < 2) {
         return setFormError("Pour une arrivée le dimanche, le séjour doit être d'au moins 2 nuits.");
       }
@@ -319,14 +306,11 @@ for (const ymd of Array.from(arrivals)) {
         const endMonth = specialEnd.getMonth();
         const endDay = specialEnd.getDate();
 
-        // Cas simple : même mois
         if (startMonth === endMonth) {
           if (dMonth === startMonth && dDay >= startDay && dDay <= endDay) {
             return specialPrice.price;
           }
-        }
-        // Cas à cheval sur 2 mois
-        else {
+        } else {
           if (
             (dMonth === startMonth && dDay >= startDay) ||
             (dMonth === endMonth && dDay <= endDay)
@@ -352,121 +336,99 @@ for (const ymd of Array.from(arrivals)) {
           </p>
         )}
 
-        {loading && !error && (
-          <p className="text-gray-400 text-center mb-2 text-sm">
-            Mise à jour des disponibilités…
-          </p>
-        )}
-
         <div className="flex justify-center mb-6">
-  <div className="w-full max-w-md relative">
-    {/* Overlay pendant le chargement */}
-    {loading && (
-      <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80">
-        <p className="text-sm text-gray-500 animate-pulse">
-          Chargement des disponibilités…
-        </p>
-      </div>
-    )}
+          <div className="w-full max-w-md relative">
+            {loading && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80">
+                <p className="text-sm text-gray-500 animate-pulse">
+                  Chargement des disponibilités…
+                </p>
+              </div>
+            )}
 
-    <Calendar
-      className="mx-auto w-full"
-      tileDisabled={tileDisabled}
-      tileClassName={tileClassName}
-      selectRange={true}
-      locale="fr-FR"
-      onChange={...}  // même handler que ci-dessus, avec le if (loading) return;
-      value={range as any}
-    />
-  </div>
-</div>
-             onChange={(val: Date | Date[] | null) => {
-               if (loading) {
-    // On ignore tout clic tant que les dispos ne sont pas chargées
-    return;           
-  }
-               
-  if (Array.isArray(val)) {
-    // Plage complète sélectionnée (2e clic)
-    const [start, end] = val;
-    if (!start || !end) {
-      setRange(null);
-      return;
-    }
+            <Calendar
+              className="mx-auto w-full"
+              tileDisabled={tileDisabled}
+              tileClassName={tileClassName}
+              selectRange={true}
+              locale="fr-FR"
+              onChange={(val: Date | Date[] | null) => {
+                if (loading) {
+                  return;
+                }
 
-    const s = new Date(start);
-    const e = new Date(end);
-    s.setHours(0, 0, 0, 0);
-    e.setHours(0, 0, 0, 0);
+                if (Array.isArray(val)) {
+                  const [start, end] = val;
+                  if (!start || !end) {
+                    setRange(null);
+                    return;
+                  }
 
-    // Si l'utilisateur a cliqué à l'envers (fin avant début), on inverse
-    if (e < s) {
-      const tmp = new Date(s);
-      (s as any) = e;
-      (e as any) = tmp;
-    }
+                  const s = new Date(start);
+                  const e = new Date(end);
+                  s.setHours(0, 0, 0, 0);
+                  e.setHours(0, 0, 0, 0);
 
-    // On vérifie que la plage ne chevauche aucune nuit réservée
-    let conflict = false;
-    for (let d = new Date(s); d < e; d.setDate(d.getDate() + 1)) {
-      const ymd = dateToYMD(new Date(d));
-      if (bookedSet.has(ymd)) {
-        conflict = true;
-        break;
-      }
-    }
+                  if (e < s) {
+                    const tmp = new Date(s);
+                    (s as any) = e;
+                    (e as any) = tmp;
+                  }
 
-    if (conflict) {
-  setRange(null);
-} else {
-  setRange([s, e]);
-}
-  } else if (val instanceof Date) {
-    // Premier clic sur un jour
-    const clicked = new Date(val);
-    clicked.setHours(0, 0, 0, 0);
-    const ymd = dateToYMD(clicked);
+                  let conflict = false;
+                  for (let d = new Date(s); d < e; d.setDate(d.getDate() + 1)) {
+                    const ymd = dateToYMD(new Date(d));
+                    if (bookedSet.has(ymd)) {
+                      conflict = true;
+                      break;
+                    }
+                  }
 
-    // On bloque seulement les dates passées
-    if (disabledSet.has(ymd)) {
-      setRange(null);
-      return;
-    }
+                  if (conflict) {
+                    setRange(null);
+                  } else {
+                    setRange([s, e]);
+                  }
+                } else if (val instanceof Date) {
+                  const clicked = new Date(val);
+                  clicked.setHours(0, 0, 0, 0);
+                  const ymd = dateToYMD(clicked);
 
-    // Regarder si le lendemain est un jour d'arrivée ET que la nuit n'est pas déjà réservée
-    const next = new Date(clicked);
-    next.setDate(next.getDate() + 1);
-    next.setHours(0, 0, 0, 0);
-    const nextYmd = dateToYMD(next);
+                  if (disabledSet.has(ymd)) {
+                    setRange(null);
+                    return;
+                  }
 
-    if (arrivalSet.has(nextYmd) && !bookedSet.has(nextYmd)) {
-      // 👉 Auto-sélection : nuit du jour cliqué vers le lendemain (13→14 si 14 est arrivée)
-      setRange([clicked, next]);
-    } else {
-      // Comportement normal : on attend un deuxième clic
-      setRange([clicked]);
-    }
-  } else {
-    setRange(null);
-  }
-}}
+                  const next = new Date(clicked);
+                  next.setDate(next.getDate() + 1);
+                  next.setHours(0, 0, 0, 0);
+                  const nextYmd = dateToYMD(next);
+
+                  if (arrivalSet.has(nextYmd) && !bookedSet.has(nextYmd)) {
+                    setRange([clicked, next]);
+                  } else {
+                    setRange([clicked]);
+                  }
+                } else {
+                  setRange(null);
+                }
+              }}
               value={range as any}
             />
           </div>
         </div>
 
         <div className="mb-6 text-center space-y-2">
-  <p className="text-sm text-gray-600">
-    Sélectionnez vos dates d&apos;arrivée et de départ sur le calendrier.
-  </p>
-  <div className="text-xs text-gray-500 space-y-1">
-    <p>🔲 <strong>Cases entièrement grises</strong> : nuits déjà réservées (non disponibles).</p>
-    <p>◧ <strong>Cases moitié grises</strong> : → vous pouvez partir ce jour-là.</p>
-  </div>
-</div>
+          <p className="text-sm text-gray-600">
+            Sélectionnez vos dates d&apos;arrivée et de départ sur le calendrier.
+          </p>
+          <div className="text-xs text-gray-500 space-y-1">
+            <p>🔲 <strong>Cases entièrement grises</strong> : nuits déjà réservées (non disponibles).</p>
+            <p>◧ <strong>Cases moitié grises</strong> : vous pouvez partir ce jour-là.</p>
+          </div>
+        </div>
 
         <form className="bg-gray-50 p-6 rounded-md shadow-sm" onSubmit={(e) => e.preventDefault()}>
-          {/* 🔹 DÉTAILS DU SÉJOUR EN PREMIER */}
           <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
             <div>
               <label className="block text-sm font-medium text-gray-700">Date d&apos;arrivée</label>
@@ -497,22 +459,20 @@ for (const ymd of Array.from(arrivals)) {
               />
             </div>
           </div>
+
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">Nom</label>
               <input type="text" value={nom} onChange={(e) => setNom(e.target.value)} className="mt-1 block w-full border rounded-md px-3 py-2" />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700">Prénom</label>
               <input type="text" value={prenom} onChange={(e) => setPrenom(e.target.value)} className="mt-1 block w-full border rounded-md px-3 py-2" />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700">Téléphone</label>
               <input type="tel" value={tel} onChange={(e) => setTel(e.target.value)} className="mt-1 block w-full border rounded-md px-3 py-2" />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700">Adresse mail</label>
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 block w-full border rounded-md px-3 py-2" />
@@ -547,8 +507,6 @@ for (const ymd of Array.from(arrivals)) {
             </label>
           </div>
 
-         {/* Section des options de réservation */}
-          {/* Section des options de réservation */}
           {(() => {
             const AIRBNB_LINK = 'https://www.airbnb.fr/rooms/746228202767512240?guests=1&adults=1&s=67&unique_share_id=d62985eb-ed51-4f76-98c3-fa9363f1486b';
             const airbnbApproxPrice = Math.round(finalPrice * 1.2 * 100) / 100;
@@ -556,14 +514,13 @@ for (const ymd of Array.from(arrivals)) {
 
             return (
               <div className="mt-8 space-y-8">
-                
                 {/* Option 1: Direct (PayPal/Carte) */}
                 <div className="w-full">
                   <div className="text-center mb-4">
-                    <p className="text-sm font-bold text-gray-800">Paiement sécurisé par Carte Bancaire ou PayPal</p>
+                    <p className="text-sm font-bold text-gray-800">💳 Paiement sécurisé par Carte Bancaire ou PayPal</p>
                     <p className="text-xs text-gray-500">Réservation immédiate et sans frais de plateforme</p>
                   </div>
-                  
+
                   <PayPalScriptProvider options={{ "client-id": import.meta.env.VITE_PAYPAL_CLIENT_ID, currency: "EUR" }}>
                     <div className="w-full flex justify-center">
                       <div className={`${!isFormValid ? 'opacity-50 pointer-events-none' : ''}`}>
@@ -590,68 +547,36 @@ for (const ymd of Array.from(arrivals)) {
                             });
                           }}
                           onApprove={async (data, actions) => {
-                            console.log('onApprove déclenché avec orderID:', data.orderID);
                             if (!actions) return;
-
                             try {
                               const order = await actions.order!.capture();
-                              console.log('Paiement capturé (client) :', order);
-
                               const normalizedRange = Array.isArray(range) && range.length === 2
                                 ? [
                                     (() => {
                                       const d = new Date(range[0] as Date);
-                                      const y = d.getFullYear();
-                                      const m = String(d.getMonth() + 1).padStart(2, '0');
-                                      const day = String(d.getDate()).padStart(2, '0');
-                                      return `${y}-${m}-${day}`;
+                                      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                                     })(),
                                     (() => {
                                       const d = new Date(range[1] as Date);
-                                      const y = d.getFullYear();
-                                      const m = String(d.getMonth() + 1).padStart(2, '0');
-                                      const day = String(d.getDate()).padStart(2, '0');
-                                      return `${y}-${m}-${day}`;
+                                      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                                     })(),
                                   ]
                                 : range;
 
-                              const reservationData = {
-                                nom,
-                                prenom,
-                                tel,
-                                email,
-                                range: normalizedRange,
-                                nights,
-                                finalPrice,
-                              };
-
-                              console.log('Avant fetch -> envoi au backend :', { orderId: data.orderID, reservationData });
-
                               const response = await fetch(`${API_BASE_URL}/api/paypal/complete`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ orderId: data.orderID, reservationData }),
+                                body: JSON.stringify({ orderId: data.orderID, reservationData: { nom, prenom, tel, email, range: normalizedRange, nights, finalPrice } }),
                               });
 
-                              console.log('Fetch envoyé, status:', response.status, 'ok:', response.ok);
-
-                              const json = await response.json().catch(() => {
-                                console.warn('Impossible de parser JSON réponse backend');
-                                return null;
-                              });
-                              console.log('Réponse JSON backend :', json);
-
-                              if (response.ok && json && json.success) {
-                                alert(`Paiement confirmé et réservation enregistrée. Merci un mail de confirmation vous été envoyé, verifiez vos spam, ${order.payer?.name?.given_name ?? prenom} 🎉`);
+                              const json = await response.json();
+                              if (response.ok && json.success) {
+                                alert(`Paiement confirmé ! Un mail de confirmation vous a été envoyé. Vérifiez vos spams.`);
                               } else {
-                                const errorMessage = json?.message || 'La réservation n\'a pas pu être enregistrée.';
-                                console.error('Réponse backend non OK :', response.status, errorMessage);
-                                alert(`Le paiement est fait mais l'enregistrement a échoué : ${errorMessage}`);
+                                alert(`Erreur : ${json.message}`);
                               }
                             } catch (err) {
-                              console.error('Erreur dans onApprove (try/catch) :', err);
-                              alert('Erreur lors du traitement du paiement. Vérifier la console et le serveur.');
+                              alert('Erreur lors du traitement du paiement.');
                             }
                           }}
                         />
@@ -660,7 +585,7 @@ for (const ymd of Array.from(arrivals)) {
                   </PayPalScriptProvider>
                 </div>
 
-                {/* Séparateur discret */}
+                {/* Séparateur */}
                 <div className="relative flex py-2 items-center">
                   <div className="flex-grow border-t border-gray-200"></div>
                   <span className="flex-shrink mx-4 text-gray-400 text-xs uppercase">Ou</span>
@@ -743,35 +668,24 @@ for (const ymd of Array.from(arrivals)) {
             <h4 className="text-lg font-semibold mb-4">Règlement intérieur</h4>
 
             <div className="max-h-80 overflow-y-auto text-sm text-gray-700 space-y-3">
-  <p className="font-semibold">
-    ⚠️ RÈGLEMENT INTÉRIEUR
-  </p>
-  <p>
-    Afin de garantir le confort et la tranquillité de tous, merci de respecter les règles suivantes :
-  </p>
-  <ul className="list-disc list-inside space-y-1">
-    <li>Aucune fête ni événement n’est autorisé.</li>
-    <li>Merci de respecter le calme, en particulier sur la terrasse du SPA, après 22h.</li>
-    <li>Aucune personne extérieure non prévue dans la réservation n’est autorisée.</li>
-    <li>La vaisselle doit être propre et rangée à votre départ (un lave-vaisselle est à votre disposition).</li>
-    <li>Merci de retirer vos chaussures à l’intérieur du logement.</li>
-    <li>Il est strictement interdit de fumer à l’intérieur du logement.</li>
-    <li>Les animaux de compagnie ne sont pas admis.</li>
-    <li>En cas de perte des clés : indemnisation forfaitaire de <strong>40 €</strong>.</li>
-    <li>Merci de respecter le linge de maison (draps et serviettes fournis) : indemnisation de <strong>50 €</strong> en cas de perte ou de détérioration.</li>
-    <li>Un nettoyage anormalement important pourra entraîner une indemnisation de <strong>150 €</strong>.</li>
-    <li>
-      Poubelles non sorties : indemnisation de <strong>15 €</strong> (le conteneur se trouve en bas de la rue, près de la route
-      principale).
-    </li>
-    <li>
-      En cas de dégâts ou de non-respect du règlement intérieur : indemnisation pouvant aller jusqu’à <strong>300 €</strong>.
-    </li>
-  </ul>
-  <p className="pt-2">
-    ❤️ Merci pour votre compréhension et votre coopération.
-  </p>
-</div>
+              <p className="font-semibold">⚠️ RÈGLEMENT INTÉRIEUR</p>
+              <p>Afin de garantir le confort et la tranquillité de tous, merci de respecter les règles suivantes :</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>Aucune fête ni événement n'est autorisé.</li>
+                <li>Merci de respecter le calme, en particulier sur la terrasse du SPA, après 22h.</li>
+                <li>Aucune personne extérieure non prévue dans la réservation n'est autorisée.</li>
+                <li>La vaisselle doit être propre et rangée à votre départ (un lave-vaisselle est à votre disposition).</li>
+                <li>Merci de retirer vos chaussures à l'intérieur du logement.</li>
+                <li>Il est strictement interdit de fumer à l'intérieur du logement.</li>
+                <li>Les animaux de compagnie ne sont pas admis.</li>
+                <li>En cas de perte des clés : indemnisation forfaitaire de <strong>40 €</strong>.</li>
+                <li>Merci de respecter le linge de maison (draps et serviettes fournis) : indemnisation de <strong>50 €</strong> en cas de perte ou de détérioration.</li>
+                <li>Un nettoyage anormalement important pourra entraîner une indemnisation de <strong>150 €</strong>.</li>
+                <li>Poubelles non sorties : indemnisation de <strong>15 €</strong> (le conteneur se trouve en bas de la rue, près de la route principale).</li>
+                <li>En cas de dégâts ou de non-respect du règlement intérieur : indemnisation pouvant aller jusqu'à <strong>300 €</strong>.</li>
+              </ul>
+              <p className="pt-2">❤️ Merci pour votre compréhension et votre coopération.</p>
+            </div>
 
             <div className="mt-4 flex justify-end">
               <button
