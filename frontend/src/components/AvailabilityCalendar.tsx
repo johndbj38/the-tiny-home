@@ -518,7 +518,7 @@ export default function AvailabilityCalendar() {
                 <div className="w-full">
                   <div className="text-center mb-4">
                     <p className="text-sm font-bold text-gray-800">💳 Paiement sécurisé par Carte Bancaire ou PayPal</p>
-                    <p className="text-xs text-gray-500">Réservation immédiate et sans frais de plateforme</p>
+                    <p className="text-xs text-gray-500">Réservation immédiate</p>
                   </div>
 
                   <PayPalScriptProvider options={{ "client-id": import.meta.env.VITE_PAYPAL_CLIENT_ID, currency: "EUR" }}>
