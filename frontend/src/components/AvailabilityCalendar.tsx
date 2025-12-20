@@ -548,6 +548,7 @@ for (const ymd of Array.from(arrivals)) {
           </div>
 
          {/* Section des options de réservation */}
+          {/* Section des options de réservation */}
           {(() => {
             const AIRBNB_LINK = 'https://www.airbnb.fr/rooms/746228202767512240?guests=1&adults=1&s=67&unique_share_id=d62985eb-ed51-4f76-98c3-fa9363f1486b';
             const airbnbApproxPrice = Math.round(finalPrice * 1.2 * 100) / 100;
