@@ -600,7 +600,7 @@ export default function AvailabilityCalendar() {
                         />
                       </div>
                     </div>
-                  </PayPalScriptProvider>
+                 </PayPalScriptProvider>
                 </div>
 
                 {/* Séparateur */}
@@ -610,36 +610,31 @@ export default function AvailabilityCalendar() {
                   <div className="flex-grow border-t border-gray-200"></div>
                 </div>
 
-{/* Option 2 & 3: Airbnb et Contact */}
+                {/* Option 2 & 3: Airbnb et Contact */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* BOUTON AIRBNB */}
                   <div className="space-y-2">
                     <p className="text-center text-xs font-medium text-gray-600">Réserver via la plateforme</p>
                     <a
-                      href={isFormValid ? AIRBNB_LINK : undefined}
+                      href="https://www.airbnb.fr/rooms/746228202767512240"
                       target="_blank"
                       rel="noopener noreferrer"
-                      onClick={(e) => {
-                        if (!isFormValid) {
-                          e.preventDefault();
-                          alert('Merci de remplir toutes vos informations avant de réserver sur Airbnb.');
-                        }
-                      }}
                       className={`block text-white text-center py-3 px-4 rounded-lg font-semibold transition-all duration-200 shadow-md hover:shadow-lg ${
                         !isFormValid ? 'opacity-50 pointer-events-none' : ''
                       }`}
                       style={{ backgroundColor: '#FF5A5F' }}
                     >
                       🎒 Réserver sur Airbnb
-                      <span className="block text-xs font-normal mt-1">≈ {airbnbPriceStr} (frais inclus)</span>
                     </a>
                   </div>
 
-                 <div className="space-y-2">
+                  {/* BOUTON EMAIL - TOTALEMENT INDÉPENDANT */}
+                  <div className="space-y-2">
                     <p className="text-center text-xs font-medium text-gray-600">Une question ? Une demande spéciale ?</p>
                     <a
-                      href={buildMailtoLink()}
+                      href={`mailto:thetinyhome73@gmail.com?subject=Contact%20The%20Tiny%20Home&body=Bonjour,%20je%20souhaiterais%20avoir%20des%20informations...`}
                       className="block w-full bg-green-600 text-white text-center py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg"
-                      style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                      style={{ opacity: 1, pointerEvents: 'auto', cursor: 'pointer' }}
                     >
                       ✉️ Nous contacter par Email
                     </a>
@@ -651,22 +646,14 @@ export default function AvailabilityCalendar() {
                   <div className="text-sm text-gray-700">
                     <p className="font-semibold mb-2">📊 Détails du séjour :</p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
-                      <span>Prix/nuit : <strong>{displayedPricePerNight.toLocaleString('fr-FR')}€</strong></span>
+                      <span>Prix/nuit : <strong>{displayedPricePerNight}€</strong></span>
                       <span>Nuits : <strong>{nights}</strong></span>
                       {discountPercent > 0 && (
                         <span>Remise : <strong>{discountPercent}%</strong></span>
                       )}
                     </div>
-                    {nights > 0 && (
-                      <p className="mt-2 text-xs text-yellow-800 font-medium">
-                        ℹ️ * Le tarif affiché sur Airbnb est à titre indicatif incluant les frais de la plateforme.
-                      </p>
-                    )}
                   </div>
                 </div>
-              </div>
-            );
-          })()}
         </form>
       </div>
 
