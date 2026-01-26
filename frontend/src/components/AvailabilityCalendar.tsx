@@ -399,8 +399,8 @@ export default function AvailabilityCalendar() {
           </div>
         )}
 
-        <div className="mb-6 text-center space-y-2">
-          <p className="text-sm text-gray-600">
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-md text-center">
+          <p className="text-sm font-medium text-blue-800">
             Sélectionnez vos dates d&apos;arrivée et de départ sur le calendrier.
           </p>
           <div className="text-xs text-gray-500 space-y-1">
