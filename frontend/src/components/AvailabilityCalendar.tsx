@@ -13,12 +13,14 @@ type EventItem = {
 
 const DEFAULT_PRICE_PER_NIGHT = 149; // € / nuit par défaut
 
-// Définition des prix spéciaux par date (inclusives)
+// Définition des prix spéciaux par date (reconduits tous les ans)
+// Format : mois (1-12) et jour
 const SPECIAL_PRICES = [
-  { start: '2025-12-24', end: '2025-12-26', price: 200 }, // Noël
-  { start: '2026-02-14', end: '2026-02-14', price: 250 }, // Saint-Valentin
-  { start: '2026-02-13', end: '2026-02-13', price: 250 }, // Saint-Valentin
-  { start: '2025-12-31', end: '2026-01-01', price: 250 }, // Nouvel an
+  { month: 12, startDay: 24, endDay: 26, price: 200 }, // Noël (24-26 décembre)
+  { month: 12, startDay: 31, endDay: 31, price: 250 }, // Nouvel an (31 décembre)
+  { month: 1, startDay: 1, endDay: 1, price: 250 },    // Nouvel an (1er janvier)
+  { month: 2, startDay: 13, endDay: 13, price: 200 },  // Saint-Valentin (13 février)
+  { month: 2, startDay: 14, endDay: 14, price: 250 },  // Saint-Valentin (14 février)
 ];
 
 const TARGET_EMAIL = 'thetinyhome73@gmail.com';
@@ -163,34 +165,17 @@ export default function AvailabilityCalendar() {
       for (let d = new Date(start); d.getTime() < end.getTime(); d.setDate(d.getDate() + 1)) {
         let priceForThisNight = DEFAULT_PRICE_PER_NIGHT;
 
+        const dMonth = d.getMonth() + 1; // JavaScript months are 0-indexed
+        const dDay = d.getDate();
+
+        // Vérifier si cette nuit correspond à un prix spécial
         for (const specialPrice of SPECIAL_PRICES) {
-          const specialStart = new Date(specialPrice.start);
-          const specialEnd = new Date(specialPrice.end);
-
-          const dMonth = d.getMonth();
-          const dDay = d.getDate();
-
-          const startMonth = specialStart.getMonth();
-          const startDay = specialStart.getDate();
-
-          const endMonth = specialEnd.getMonth();
-          const endDay = specialEnd.getDate();
-
-          if (startMonth === endMonth) {
-            if (dMonth === startMonth && dDay >= startDay && dDay <= endDay) {
-              priceForThisNight = specialPrice.price;
-              break;
-            }
-          } else {
-            if (
-              (dMonth === startMonth && dDay >= startDay) ||
-              (dMonth === endMonth && dDay <= endDay)
-            ) {
-              priceForThisNight = specialPrice.price;
-              break;
-            }
+          if (dMonth === specialPrice.month && dDay >= specialPrice.startDay && dDay <= specialPrice.endDay) {
+            priceForThisNight = specialPrice.price;
+            break;
           }
         }
+        
         totalPrice += priceForThisNight;
       }
     }
@@ -232,7 +217,7 @@ export default function AvailabilityCalendar() {
     return false;
   }
   
-  // Validation pour le paiement (avec dates obligatoires + règle juillet/août)
+  // Validation pour le paiement (avec dates obligatoires + règle juillet/août : 2 nuits minimum)
   const isFormValid =
     nom.trim() !== '' &&
     prenom.trim() !== '' &&
@@ -243,7 +228,7 @@ export default function AvailabilityCalendar() {
     range.length === 2 &&
     nights > 0 &&
     isRulesAccepted &&
-    !(isInJulyOrAugust(range) && nights < 3);
+    !(isInJulyOrAugust(range) && nights < 2);
 
   function validateForm() {
     setFormError(null);
@@ -255,9 +240,9 @@ export default function AvailabilityCalendar() {
     if (!range || range.length !== 2 || nights <= 0) return setFormError('Veuillez sélectionner une plage de dates valide (au moins 1 nuit).');
     if (!isRulesAccepted) return setFormError('Vous devez accepter le règlement intérieur pour réserver.');
     
-    // Vérification de la règle juillet/août
-    if (isInJulyOrAugust(range) && nights < 3) {
-      return setFormError('⚠️ Pour les séjours en juillet et août, la réservation doit être d\'au moins 3 nuits.');
+    // Vérification de la règle juillet/août : 2 nuits minimum
+    if (isInJulyOrAugust(range) && nights < 2) {
+      return setFormError('⚠️ Pour les séjours en juillet et août, la réservation doit être d\'au moins 2 nuits.');
     }
     
     if (range && range.length === 2) {
@@ -325,30 +310,12 @@ export default function AvailabilityCalendar() {
   const displayedPricePerNight = (() => {
     if (range && range.length === 2) {
       const startDay = new Date(range[0]);
-      const dMonth = startDay.getMonth();
+      const dMonth = startDay.getMonth() + 1;
       const dDay = startDay.getDate();
 
       for (const specialPrice of SPECIAL_PRICES) {
-        const specialStart = new Date(specialPrice.start);
-        const specialEnd = new Date(specialPrice.end);
-
-        const startMonth = specialStart.getMonth();
-        const startDay = specialStart.getDate();
-
-        const endMonth = specialEnd.getMonth();
-        const endDay = specialEnd.getDate();
-
-        if (startMonth === endMonth) {
-          if (dMonth === startMonth && dDay >= startDay && dDay <= endDay) {
-            return specialPrice.price;
-          }
-        } else {
-          if (
-            (dMonth === startMonth && dDay >= startDay) ||
-            (dMonth === endMonth && dDay <= endDay)
-          ) {
-            return specialPrice.price;
-          }
+        if (dMonth === specialPrice.month && dDay >= specialPrice.startDay && dDay <= specialPrice.endDay) {
+          return specialPrice.price;
         }
       }
     }
@@ -419,15 +386,15 @@ export default function AvailabilityCalendar() {
         {/* Message permanent pour la règle juillet/août */}
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-center">
           <p className="text-sm font-medium text-blue-800">
-            ☀️ Réservation minimum en juillet et août : 3 nuits
+            ☀️ Réservation minimum en juillet et août : 2 nuits
           </p>
         </div>
 
-        {/* Message dynamique si dates sélectionnées en juillet/août avec moins de 3 nuits */}
-        {range && nights > 0 && nights < 3 && isInJulyOrAugust(range) && (
+        {/* Message dynamique si dates sélectionnées en juillet/août avec moins de 2 nuits */}
+        {range && nights > 0 && nights < 2 && isInJulyOrAugust(range) && (
           <div className="mb-4 p-3 bg-orange-50 border border-orange-300 rounded-md text-center">
             <p className="text-sm font-semibold text-orange-700">
-              ⚠️ Attention : Pour les séjours en juillet et août, la réservation minimum est de 3 nuits.
+              ⚠️ Attention : Pour les séjours en juillet et août, la réservation minimum est de 2 nuits.
             </p>
           </div>
         )}
