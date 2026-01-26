@@ -610,7 +610,7 @@ export default function AvailabilityCalendar() {
                   <div className="flex-grow border-t border-gray-200"></div>
                 </div>
 
-                {/* Option 2 & 3: Airbnb et Contact */}
+{/* Option 2 & 3: Airbnb et Contact */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <p className="text-center text-xs font-medium text-gray-600">Réserver via la plateforme</p>
@@ -635,7 +635,7 @@ export default function AvailabilityCalendar() {
                   </div>
 
                   <div className="space-y-2">
-                   <p className="text-center text-xs font-medium text-gray-600">Une question ? Une demande spéciale ?</p>
+                    <p className="text-center text-xs font-medium text-gray-600">Une question ? Une demande spéciale ?</p>
                     <button
                       type="button"
                       onClick={() => {
