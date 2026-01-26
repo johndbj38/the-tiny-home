@@ -461,23 +461,36 @@ export default function AvailabilityCalendar() {
           </div>
         )}
         
-{/* --- NOUVEL EMPLACEMENT DU BLOC DÉTAILS --- */}
-        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <div className="text-sm text-gray-700">
-            <p className="font-semibold mb-2">📊 Détails du séjour :</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
-              <span>Prix/nuit : <strong>{displayedPricePerNight.toLocaleString('fr-FR')}€</strong></span>
-              <span>Nuits : <strong>{nights}</strong></span>
-              {discountPercent > 0 && (
-                <span>Remise : <strong>{discountPercent}%</strong></span>
-              )}
-            </div>
-            {nights > 0 && (
-              <p className="mt-2 text-xs text-yellow-800 font-medium">
-              </p>
-            )}
-          </div>
+{/* --- BLOC DÉTAILS DU SÉJOUR --- */}
+<div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+  <div className="text-sm text-gray-700">
+    <p className="font-semibold mb-2">📊 Détails du séjour :</p>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+      <div className="text-center">
+        <p className="text-gray-600">Prix total</p>
+        <p className="font-bold text-lg">{nights > 0 ? finalPrice.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }) : '—'}</p>
+      </div>
+      <div className="text-center">
+        <p className="text-gray-600">Nuits</p>
+        <p className="font-bold text-lg">{nights > 0 ? nights : '—'}</p>
+      </div>
+      <div className="text-center">
+        <p className="text-gray-600">Personnes max.</p>
+        <p className="font-bold text-lg">2</p>
+      </div>
+      {discountPercent > 0 && (
+        <div className="text-center">
+          <p className="text-gray-600">Remise</p>
+          <p className="font-bold text-lg text-green-600">-{discountPercent}%</p>
         </div>
+      )}
+    </div>
+    {nights > 0 && (
+      <p className="mt-3 text-xs text-yellow-800 font-medium text-center">
+      </p>
+    )}
+  </div>
+</div>
         
         <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-md text-center">
           <p className="text-sm font-medium text-blue-800">
