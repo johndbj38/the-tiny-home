@@ -383,13 +383,6 @@ export default function AvailabilityCalendar() {
           </div>
         </div>
 
-        {/* Message permanent pour la règle juillet/août */}
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-md text-center">
-          <p className="text-sm font-medium text-blue-800">
-            ☀️ Réservation minimum en juillet et août : 2 nuits
-          </p>
-        </div>
-
         {/* Message dynamique si dates sélectionnées en juillet/août avec moins de 2 nuits */}
         {range && nights > 0 && nights < 2 && isInJulyOrAugust(range) && (
           <div className="mb-4 p-3 bg-orange-50 border border-orange-300 rounded-md text-center">
