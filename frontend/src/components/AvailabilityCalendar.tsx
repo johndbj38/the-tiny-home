@@ -639,7 +639,6 @@ export default function AvailabilityCalendar() {
                     <button
                       type="button"
                       onClick={() => {
-                        setFormError(null);
                         const mailto = buildMailtoLink();
                         window.location.href = mailto;
                       }}
