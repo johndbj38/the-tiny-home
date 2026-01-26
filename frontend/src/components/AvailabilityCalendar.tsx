@@ -294,7 +294,6 @@ function buildMailtoLink() {
     const body = buildMailBody();
     return `mailto:${TARGET_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   }
-  }
 
   function openMailClient() {
     const mailto = buildMailtoLink();
