@@ -1,5 +1,5 @@
 // src/components/AvailabilityCalendar.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
@@ -26,6 +26,11 @@ const SPECIAL_PRICES = [
   { month: 2, startDay: 13, endDay: 13, price: 200 },  // Saint-Valentin (13 février)
   { month: 2, startDay: 14, endDay: 14, price: 250 },  // Saint-Valentin (14 février)
 ];
+
+// ============================================
+// 🔧 CONFIGURATION DE LA FENÊTRE DE RÉSERVATION
+// ============================================
+const MAX_BOOKING_MONTHS = 4; // Nombre de mois maximum pour les réservations futures
 // ============================================
 
 const TARGET_EMAIL = 'thetinyhome73@gmail.com';
@@ -34,7 +39,6 @@ export default function AvailabilityCalendar() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [disabledSet, setDisabledSet] = useState<Set<string>>(new Set());
   const [bookedSet, setBookedSet] = useState<Set<string>>(new Set());
   const [arrivalSet, setArrivalSet] = useState<Set<string>>(new Set());
   const [showRulesModal, setShowRulesModal] = useState(false);
@@ -49,63 +53,80 @@ export default function AvailabilityCalendar() {
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000';
 
+  // Calcul des dates limites (mémorisé pour éviter les recalculs)
+  const { today, maxFuture } = React.useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const maxFuture = new Date(today);
+    maxFuture.setMonth(maxFuture.getMonth() + MAX_BOOKING_MONTHS);
+    maxFuture.setHours(0, 0, 0, 0);
+    
+    return { today, maxFuture };
+  }, []);
+
   useEffect(() => {
     async function fetchEvents() {
+      const startTime = performance.now();
       setLoading(true);
       setError(null);
+      
       try {
         const res = await fetch(`${API_BASE_URL}/api/availability`);
+        const fetchTime = performance.now();
+        console.log('⏱️ Temps fetch API:', Math.round(fetchTime - startTime), 'ms');
+        
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         const ev: EventItem[] = json.events || [];
         setEvents(ev);
 
-        const pastSet = new Set<string>();
         const booked = new Set<string>();
         const arrivals = new Set<string>();
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const maxFuture = new Date(today);
-        maxFuture.setFullYear(maxFuture.getFullYear() + 2);
-
+        // Traitement optimisé : on ne traite que les événements dans la fenêtre visible
         for (const e of ev) {
           if (!e.start || !e.end) continue;
+          
           const start = new Date(e.start);
           const end = new Date(e.end);
+          
+          // Si l'événement est complètement hors de la fenêtre visible, on le saute
+          if (end < today || start > maxFuture) continue;
+          
+          // Clamper les dates à la fenêtre visible
+          const clampedStart = start < today ? today : start;
+          const clampedEnd = end > maxFuture ? maxFuture : end;
+          
           const startYmd = dateToYMD(start);
           arrivals.add(startYmd);
 
-          const effectiveEnd = end.getTime() > maxFuture.getTime() ? maxFuture : end;
-          for (let d = new Date(start); d < effectiveEnd; d.setDate(d.getDate() + 1)) {
-            booked.add(dateToYMD(new Date(d)));
+          // Remplir les jours réservés (optimisé : pas de new Date() inutile)
+          for (let d = new Date(clampedStart); d < clampedEnd; d.setDate(d.getDate() + 1)) {
+            booked.add(dateToYMD(d));
           }
         }
 
+        // Nettoyer les arrivées qui ne sont pas possibles (jour précédent réservé)
         for (const ymd of Array.from(arrivals)) {
           const [year, month, day] = ymd.split('-').map(Number);
           const d = new Date(year, month - 1, day);
           d.setDate(d.getDate() - 1);
-          d.setHours(0, 0, 0, 0);
           const prevYmd = dateToYMD(d);
           if (booked.has(prevYmd)) {
             arrivals.delete(ymd);
           }
         }
 
-        const past = new Date(today);
-        past.setFullYear(past.getFullYear() - 2);
-        for (let d = new Date(past); d < today; d.setDate(d.getDate() + 1)) {
-          pastSet.add(dateToYMD(new Date(d)));
-        }
-
         setBookedSet(booked);
         setArrivalSet(arrivals);
-        setDisabledSet(pastSet);
+        
+        const endTime = performance.now();
+        console.log('⏱️ Temps total traitement:', Math.round(endTime - startTime), 'ms');
+        console.log('📊 Dates réservées:', booked.size, '| Arrivées possibles:', arrivals.size);
+        
       } catch (err: any) {
         setError(err.message || 'Erreur inconnue');
-        setDisabledSet(new Set());
         setBookedSet(new Set());
         setArrivalSet(new Set());
       } finally {
@@ -113,7 +134,7 @@ export default function AvailabilityCalendar() {
       }
     }
     fetchEvents();
-  }, [API_BASE_URL]);
+  }, [API_BASE_URL, today, maxFuture]);
 
   function dateToYMD(d: Date) {
     const y = d.getFullYear();
@@ -122,24 +143,34 @@ export default function AvailabilityCalendar() {
     return `${y}-${m}-${day}`;
   }
 
-  function tileDisabled({ date, view }: { date: Date; view: string }) {
+  // Fonction optimisée avec useCallback pour éviter les re-créations
+  const tileDisabled = useCallback(({ date, view }: { date: Date; view: string }) => {
     if (view !== 'month') return false;
-    const ymd = dateToYMD(date);
-    return disabledSet.has(ymd);
-  }
+    
+    // Désactiver les dates passées (sans Set)
+    if (date < today) return true;
+    
+    // Désactiver les dates au-delà de la fenêtre de réservation
+    if (date > maxFuture) return true;
+    
+    return false;
+  }, [today, maxFuture]);
 
-  function tileClassName({ date, view }: { date: Date; view: string }) {
+  // Fonction optimisée avec useCallback
+  const tileClassName = useCallback(({ date, view }: { date: Date; view: string }) => {
     if (view !== 'month') return '';
     const ymd = dateToYMD(date);
     const classes: string[] = [];
+    
     if (bookedSet.has(ymd)) {
       classes.push('booked-day');
     }
     if (arrivalSet.has(ymd)) {
       classes.push('arrival-day');
     }
+    
     return classes.join(' ');
-  }
+  }, [bookedSet, arrivalSet]);
 
   function formatDate(d: Date) {
     return d.toLocaleDateString('fr-FR');
@@ -162,9 +193,9 @@ export default function AvailabilityCalendar() {
     let totalPrice = 0;
     if (nights > 0) {
       for (let d = new Date(start); d.getTime() < end.getTime(); d.setDate(d.getDate() + 1)) {
-        const dMonth = d.getMonth() + 1; // JavaScript months are 0-indexed
+        const dMonth = d.getMonth() + 1;
         const dDay = d.getDate();
-        const dayOfWeek = d.getDay(); // 0 = dimanche, 1 = lundi, ..., 6 = samedi
+        const dayOfWeek = d.getDay();
 
         // Vérifier d'abord si cette nuit correspond à un prix spécial
         let priceForThisNight = null;
@@ -177,11 +208,9 @@ export default function AvailabilityCalendar() {
 
         // Si pas de prix spécial, appliquer la tarification semaine/weekend
         if (priceForThisNight === null) {
-          // Nuit du vendredi (ven->sam) ou samedi (sam->dim) = weekend
           if (dayOfWeek === 5 || dayOfWeek === 6) {
             priceForThisNight = PRICE_WEEKEND;
           } else {
-            // Nuits du lundi au jeudi (lun->mar, mar->mer, mer->jeu, jeu->ven) = semaine
             priceForThisNight = PRICE_WEEKDAY;
           }
         }
@@ -218,14 +247,14 @@ export default function AvailabilityCalendar() {
     const end = new Date(range[1]);
     for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
       const month = d.getMonth();
-      if (month === 6 || month === 7) { // 6 = juillet, 7 = août
+      if (month === 6 || month === 7) {
         return true;
       }
     }
     return false;
   }
 
-  // Validation pour le paiement (avec dates obligatoires + règle juillet/août : 2 nuits minimum)
+  // Validation pour le paiement
   const isFormValid =
     nom.trim() !== '' &&
     prenom.trim() !== '' &&
@@ -250,7 +279,6 @@ export default function AvailabilityCalendar() {
     if (!isRulesAccepted)
       return setFormError('Vous devez accepter le règlement intérieur pour réserver.');
 
-    // Vérification de la règle juillet/août : 2 nuits minimum
     if (isInJulyOrAugust(range) && nights < 2) {
       return setFormError('⚠️ Pour les séjours en juillet et août, la réservation doit être d\'au moins 2 nuits.');
     }
@@ -264,7 +292,7 @@ export default function AvailabilityCalendar() {
       }
 
       for (let d = new Date(s); d < e; d.setDate(d.getDate() + 1)) {
-        if (bookedSet.has(dateToYMD(new Date(d)))) {
+        if (bookedSet.has(dateToYMD(d))) {
           return setFormError('La plage sélectionnée contient des dates indisponibles. Choisissez une autre plage.');
         }
       }
@@ -324,23 +352,71 @@ export default function AvailabilityCalendar() {
       const dDay = startDay.getDate();
       const dayOfWeek = startDay.getDay();
 
-      // Vérifier d'abord les prix spéciaux
       for (const specialPrice of SPECIAL_PRICES) {
         if (dMonth === specialPrice.month && dDay >= specialPrice.startDay && dDay <= specialPrice.endDay) {
           return specialPrice.price;
         }
       }
 
-      // Sinon, appliquer la tarification semaine/weekend
       if (dayOfWeek === 5 || dayOfWeek === 6) {
         return PRICE_WEEKEND;
       } else {
         return PRICE_WEEKDAY;
       }
     }
-    // Par défaut, afficher le prix semaine
     return PRICE_WEEKDAY;
   })();
+
+  // Gestion optimisée du changement de dates
+  const handleCalendarChange = useCallback((val: Date | Date[] | null) => {
+    if (loading) return;
+
+    if (Array.isArray(val)) {
+      const [start, end] = val;
+      if (!start || !end) {
+        setRange(null);
+        return;
+      }
+
+      const s = new Date(start);
+      const e = new Date(end);
+      s.setHours(0, 0, 0, 0);
+      e.setHours(0, 0, 0, 0);
+
+      if (e < s) {
+        [s as any, e as any] = [e, s];
+      }
+
+      let conflict = false;
+      for (let d = new Date(s); d < e; d.setDate(d.getDate() + 1)) {
+        if (bookedSet.has(dateToYMD(d))) {
+          conflict = true;
+          break;
+        }
+      }
+
+      if (conflict) setRange(null);
+      else setRange([s, e]);
+    } else if (val instanceof Date) {
+      const clicked = new Date(val);
+      clicked.setHours(0, 0, 0, 0);
+
+      if (clicked < today || clicked > maxFuture) {
+        setRange(null);
+        return;
+      }
+
+      const next = new Date(clicked);
+      next.setDate(next.getDate() + 1);
+      next.setHours(0, 0, 0, 0);
+
+      if (arrivalSet.has(dateToYMD(next)) && !bookedSet.has(dateToYMD(next)))
+        setRange([clicked, next]);
+      else setRange([clicked]);
+    } else {
+      setRange(null);
+    }
+  }, [loading, bookedSet, arrivalSet, today, maxFuture]);
 
   return (
     <section id="availability" className="py-12 bg-white">
@@ -355,13 +431,23 @@ export default function AvailabilityCalendar() {
           </p>
         )}
 
+        {/* Message d'information sur la fenêtre de réservation */}
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-center">
+          <p className="text-sm font-medium text-blue-800">
+            📅 Réservations ouvertes jusqu'au {formatDate(maxFuture)}
+          </p>
+          <p className="text-xs text-gray-600 mt-1">
+            Les dates au-delà sont grisées et seront disponibles progressivement.
+          </p>
+        </div>
+
         <div className="flex justify-center mb-6">
           <div className="w-full max-w-md relative">
             {loading && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80">
-                <p className="text-sm text-gray-500 animate-pulse">
-                  Chargement des disponibilités…
-                </p>
+              <div className="absolute top-2 left-0 right-0 z-10 flex justify-center">
+                <div className="bg-blue-500 text-white text-xs px-3 py-1 rounded-full shadow-md animate-pulse">
+                  Chargement…
+                </div>
               </div>
             )}
 
@@ -371,63 +457,12 @@ export default function AvailabilityCalendar() {
               tileClassName={tileClassName}
               selectRange={true}
               locale="fr-FR"
-              onChange={(val: Date | Date[] | null) => {
-                if (loading) return;
-
-                if (Array.isArray(val)) {
-                  const [start, end] = val;
-                  if (!start || !end) {
-                    setRange(null);
-                    return;
-                  }
-
-                  const s = new Date(start);
-                  const e = new Date(end);
-                  s.setHours(0, 0, 0, 0);
-                  e.setHours(0, 0, 0, 0);
-
-                  if (e < s) {
-                    const tmp = new Date(s);
-                    (s as any) = e;
-                    (e as any) = tmp;
-                  }
-
-                  let conflict = false;
-                  for (let d = new Date(s); d < e; d.setDate(d.getDate() + 1)) {
-                    if (bookedSet.has(dateToYMD(new Date(d)))) {
-                      conflict = true;
-                      break;
-                    }
-                  }
-
-                  if (conflict) setRange(null);
-                  else setRange([s, e]);
-                } else if (val instanceof Date) {
-                  const clicked = new Date(val);
-                  clicked.setHours(0, 0, 0, 0);
-
-                  if (disabledSet.has(dateToYMD(clicked))) {
-                    setRange(null);
-                    return;
-                  }
-
-                  const next = new Date(clicked);
-                  next.setDate(next.getDate() + 1);
-                  next.setHours(0, 0, 0, 0);
-
-                  if (arrivalSet.has(dateToYMD(next)) && !bookedSet.has(dateToYMD(next)))
-                    setRange([clicked, next]);
-                  else setRange([clicked]);
-                } else {
-                  setRange(null);
-                }
-              }}
+              onChange={handleCalendarChange}
               value={range as any}
             />
           </div>
         </div>
 
-        {/* Message dynamique si dates sélectionnées en juillet/août avec moins de 2 nuits */}
         {range && nights > 0 && nights < 2 && isInJulyOrAugust(range) && (
           <div className="mb-4 p-3 bg-orange-50 border border-orange-300 rounded-md text-center">
             <p className="text-sm font-semibold text-orange-700">
@@ -441,7 +476,7 @@ export default function AvailabilityCalendar() {
             Sélectionnez vos dates d&apos;arrivée et de départ sur le calendrier.
           </p>
           <div className="text-xs text-gray-500 space-y-1">
-            <p>◾️◾️ <strong>Cases grises</strong> : nuits non disponibles).</p>
+            <p>◾️◾️ <strong>Cases grises</strong> : nuits non disponibles.</p>
             <p>
               ◾️◽️<strong>Cases moitié grises</strong> : Checkout à 12h.
             </p>
@@ -564,8 +599,8 @@ export default function AvailabilityCalendar() {
                       <div className={`${!isFormValid ? 'opacity-50 pointer-events-none' : ''}`}>
                         <PayPalButtons
                           style={{ layout: "vertical", color: "blue", shape: "rect", label: "paypal" }}
-                          disabled={!isFormValid}
-                          forceReRender={[finalPrice, nights, isFormValid]}
+                          disabled={!isFormValid || nights === 0}
+                          forceReRender={[finalPrice]}
                           createOrder={(data, actions) => {
                             if (!isFormValid) return Promise.reject();
                             return actions.order.create({
