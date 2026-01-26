@@ -474,7 +474,6 @@ export default function AvailabilityCalendar() {
             </div>
             {nights > 0 && (
               <p className="mt-2 text-xs text-yellow-800 font-medium">
-                ℹ️ * Le tarif affiché sur Airbnb est à titre indicatif incluant les frais de la plateforme.
               </p>
             )}
           </div>
