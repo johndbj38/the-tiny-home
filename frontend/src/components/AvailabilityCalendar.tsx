@@ -384,7 +384,7 @@ export default function AvailabilityCalendar() {
         </div>
 
         {/* Message permanent pour la règle juillet/août */}
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-center">
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-md text-center">
           <p className="text-sm font-medium text-blue-800">
             ☀️ Réservation minimum en juillet et août : 2 nuits
           </p>
@@ -404,8 +404,8 @@ export default function AvailabilityCalendar() {
             Sélectionnez vos dates d&apos;arrivée et de départ sur le calendrier.
           </p>
           <div className="text-xs text-gray-500 space-y-1">
-            <p>🔲 <strong>Cases entièrement grises</strong> : nuits déjà réservées (non disponibles).</p>
-            <p>◧ <strong>Cases moitié grises</strong> : Jour de départ/checkout uniquement.</p>
+            <p>◾️◾️  <strong>Cases grises</strong> : nuits non disponibles).</p>
+            <p> ◾️◽️<strong>Cases moitié grises</strong> : Checkout à 12h.</p>
           </div>
         </div>
 
