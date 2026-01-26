@@ -254,7 +254,22 @@ export default function AvailabilityCalendar() {
   }
 
   function buildMailBody() {
-    if (!range || range.length !== 2) return '';
+    // Si pas de dates sélectionnées, email de contact simple
+    if (!range || range.length !== 2 || nights === 0) {
+      return [
+        'Demande de contact - The Tiny Home',
+        '',
+        `Nom : ${nom || '(non renseigné)'}`,
+        `Prénom : ${prenom || '(non renseigné)'}`,
+        `Téléphone : ${tel || '(non renseigné)'}`,
+        `Adresse e-mail : ${email || '(non renseigné)'}`,
+        '',
+        'Message : (Veuillez compléter votre demande ici)',
+        '',
+      ].join('\n');
+    }
+
+    // Sinon, email de réservation complet
     const startStr = formatDate(range[0]);
     const endStr = formatDate(range[1]);
     return [
@@ -276,8 +291,11 @@ export default function AvailabilityCalendar() {
     ].join('\n');
   }
 
-  function buildMailtoLink() {
-    const subject = `Demande de réservation - The Tiny Home (${prenom} ${nom})`;
+ function buildMailtoLink() {
+    const hasReservation = range && range.length === 2 && nights > 0;
+    const subject = hasReservation 
+      ? `Demande de réservation - The Tiny Home (${prenom || 'Client'} ${nom || ''})`.trim()
+      : `Demande de contact - The Tiny Home`;
     const body = buildMailBody();
     const params = new URLSearchParams({ subject, body });
     return `mailto:${TARGET_EMAIL}?${params.toString()}`;
