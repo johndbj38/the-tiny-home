@@ -11,7 +11,11 @@ type EventItem = {
   end: string | null;
 };
 
-const DEFAULT_PRICE_PER_NIGHT = 149; // € / nuit par défaut
+// ============================================
+// 🔧 CONFIGURATION DES PRIX - MODIFIABLE ICI
+// ============================================
+const PRICE_WEEKDAY = 139;  // € / nuit du lundi au vendredi (nuits lun-mar, mar-mer, mer-jeu, jeu-ven)
+const PRICE_WEEKEND = 149;  // € / nuit du weekend (nuits ven-sam et sam-dim)
 
 // Définition des prix spéciaux par date (reconduits tous les ans)
 // Format : mois (1-12) et jour
@@ -22,6 +26,7 @@ const SPECIAL_PRICES = [
   { month: 2, startDay: 13, endDay: 13, price: 200 },  // Saint-Valentin (13 février)
   { month: 2, startDay: 14, endDay: 14, price: 250 },  // Saint-Valentin (14 février)
 ];
+// ============================================
 
 const TARGET_EMAIL = 'thetinyhome73@gmail.com';
 
@@ -33,7 +38,6 @@ export default function AvailabilityCalendar() {
   const [bookedSet, setBookedSet] = useState<Set<string>>(new Set());
   const [arrivalSet, setArrivalSet] = useState<Set<string>>(new Set());
   const [showRulesModal, setShowRulesModal] = useState(false);
-
   const [range, setRange] = useState<Date[] | null>(null);
 
   // Form fields
@@ -41,7 +45,6 @@ export default function AvailabilityCalendar() {
   const [prenom, setPrenom] = useState('');
   const [tel, setTel] = useState('');
   const [email, setEmail] = useState('');
-
   const [formError, setFormError] = useState<string | null>(null);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000';
@@ -63,6 +66,7 @@ export default function AvailabilityCalendar() {
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+
         const maxFuture = new Date(today);
         maxFuture.setFullYear(maxFuture.getFullYear() + 2);
 
@@ -70,12 +74,10 @@ export default function AvailabilityCalendar() {
           if (!e.start || !e.end) continue;
           const start = new Date(e.start);
           const end = new Date(e.end);
-
           const startYmd = dateToYMD(start);
           arrivals.add(startYmd);
 
           const effectiveEnd = end.getTime() > maxFuture.getTime() ? maxFuture : end;
-
           for (let d = new Date(start); d < effectiveEnd; d.setDate(d.getDate() + 1)) {
             booked.add(dateToYMD(new Date(d)));
           }
@@ -87,7 +89,6 @@ export default function AvailabilityCalendar() {
           d.setDate(d.getDate() - 1);
           d.setHours(0, 0, 0, 0);
           const prevYmd = dateToYMD(d);
-
           if (booked.has(prevYmd)) {
             arrivals.delete(ymd);
           }
@@ -95,7 +96,6 @@ export default function AvailabilityCalendar() {
 
         const past = new Date(today);
         past.setFullYear(past.getFullYear() - 2);
-
         for (let d = new Date(past); d < today; d.setDate(d.getDate() + 1)) {
           pastSet.add(dateToYMD(new Date(d)));
         }
@@ -132,14 +132,12 @@ export default function AvailabilityCalendar() {
     if (view !== 'month') return '';
     const ymd = dateToYMD(date);
     const classes: string[] = [];
-
     if (bookedSet.has(ymd)) {
       classes.push('booked-day');
     }
     if (arrivalSet.has(ymd)) {
       classes.push('arrival-day');
     }
-
     return classes.join(' ');
   }
 
@@ -151,6 +149,7 @@ export default function AvailabilityCalendar() {
     if (!range || range.length !== 2 || !range[0] || !range[1]) {
       return { nights: 0, price: 0, discountPercent: 0, discountAmount: 0, finalPrice: 0 };
     }
+
     const start = new Date(range[0]);
     const end = new Date(range[1]);
     start.setHours(0, 0, 0, 0);
@@ -163,19 +162,30 @@ export default function AvailabilityCalendar() {
     let totalPrice = 0;
     if (nights > 0) {
       for (let d = new Date(start); d.getTime() < end.getTime(); d.setDate(d.getDate() + 1)) {
-        let priceForThisNight = DEFAULT_PRICE_PER_NIGHT;
-
         const dMonth = d.getMonth() + 1; // JavaScript months are 0-indexed
         const dDay = d.getDate();
+        const dayOfWeek = d.getDay(); // 0 = dimanche, 1 = lundi, ..., 6 = samedi
 
-        // Vérifier si cette nuit correspond à un prix spécial
+        // Vérifier d'abord si cette nuit correspond à un prix spécial
+        let priceForThisNight = null;
         for (const specialPrice of SPECIAL_PRICES) {
           if (dMonth === specialPrice.month && dDay >= specialPrice.startDay && dDay <= specialPrice.endDay) {
             priceForThisNight = specialPrice.price;
             break;
           }
         }
-        
+
+        // Si pas de prix spécial, appliquer la tarification semaine/weekend
+        if (priceForThisNight === null) {
+          // Nuit du vendredi (ven->sam) ou samedi (sam->dim) = weekend
+          if (dayOfWeek === 5 || dayOfWeek === 6) {
+            priceForThisNight = PRICE_WEEKEND;
+          } else {
+            // Nuits du lundi au jeudi (lun->mar, mar->mer, mer->jeu, jeu->ven) = semaine
+            priceForThisNight = PRICE_WEEKDAY;
+          }
+        }
+
         totalPrice += priceForThisNight;
       }
     }
@@ -186,7 +196,6 @@ export default function AvailabilityCalendar() {
 
     const discountAmountCents = Math.round((totalPrice * discountPercent / 100) * 100);
     const discountAmountFinal = discountAmountCents / 100;
-
     const finalPrice = Math.round((totalPrice - discountAmountFinal) * 100) / 100;
 
     return {
@@ -207,7 +216,6 @@ export default function AvailabilityCalendar() {
     if (!range || range.length !== 2) return false;
     const start = new Date(range[0]);
     const end = new Date(range[1]);
-    
     for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
       const month = d.getMonth();
       if (month === 6 || month === 7) { // 6 = juillet, 7 = août
@@ -216,7 +224,7 @@ export default function AvailabilityCalendar() {
     }
     return false;
   }
-  
+
   // Validation pour le paiement (avec dates obligatoires + règle juillet/août : 2 nuits minimum)
   const isFormValid =
     nom.trim() !== '' &&
@@ -237,22 +245,24 @@ export default function AvailabilityCalendar() {
     if (!email.trim()) return setFormError("L'adresse mail est requise.");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setFormError('Adresse mail invalide.');
     if (!tel.trim()) return setFormError('Le numéro de téléphone est requis.');
-    if (!range || range.length !== 2 || nights <= 0) return setFormError('Veuillez sélectionner une plage de dates valide (au moins 1 nuit).');
-    if (!isRulesAccepted) return setFormError('Vous devez accepter le règlement intérieur pour réserver.');
-    
+    if (!range || range.length !== 2 || nights <= 0)
+      return setFormError('Veuillez sélectionner une plage de dates valide (au moins 1 nuit).');
+    if (!isRulesAccepted)
+      return setFormError('Vous devez accepter le règlement intérieur pour réserver.');
+
     // Vérification de la règle juillet/août : 2 nuits minimum
     if (isInJulyOrAugust(range) && nights < 2) {
       return setFormError('⚠️ Pour les séjours en juillet et août, la réservation doit être d\'au moins 2 nuits.');
     }
-    
+
     if (range && range.length === 2) {
       const s = new Date(range[0]);
       const e = new Date(range[1]);
-
       const arrivalDay = s.getDay();
       if (arrivalDay === 0 && nights < 2) {
         return setFormError("Pour une arrivée le dimanche, le séjour doit être d'au moins 2 nuits.");
       }
+
       for (let d = new Date(s); d < e; d.setDate(d.getDate() + 1)) {
         if (bookedSet.has(dateToYMD(new Date(d)))) {
           return setFormError('La plage sélectionnée contient des dates indisponibles. Choisissez une autre plage.');
@@ -312,14 +322,24 @@ export default function AvailabilityCalendar() {
       const startDay = new Date(range[0]);
       const dMonth = startDay.getMonth() + 1;
       const dDay = startDay.getDate();
+      const dayOfWeek = startDay.getDay();
 
+      // Vérifier d'abord les prix spéciaux
       for (const specialPrice of SPECIAL_PRICES) {
         if (dMonth === specialPrice.month && dDay >= specialPrice.startDay && dDay <= specialPrice.endDay) {
           return specialPrice.price;
         }
       }
+
+      // Sinon, appliquer la tarification semaine/weekend
+      if (dayOfWeek === 5 || dayOfWeek === 6) {
+        return PRICE_WEEKEND;
+      } else {
+        return PRICE_WEEKDAY;
+      }
     }
-    return DEFAULT_PRICE_PER_NIGHT;
+    // Par défaut, afficher le prix semaine
+    return PRICE_WEEKDAY;
   })();
 
   return (
@@ -353,27 +373,51 @@ export default function AvailabilityCalendar() {
               locale="fr-FR"
               onChange={(val: Date | Date[] | null) => {
                 if (loading) return;
+
                 if (Array.isArray(val)) {
                   const [start, end] = val;
-                  if (!start || !end) { setRange(null); return; }
+                  if (!start || !end) {
+                    setRange(null);
+                    return;
+                  }
+
                   const s = new Date(start);
                   const e = new Date(end);
                   s.setHours(0, 0, 0, 0);
                   e.setHours(0, 0, 0, 0);
-                  if (e < s) { const tmp = new Date(s); (s as any) = e; (e as any) = tmp; }
+
+                  if (e < s) {
+                    const tmp = new Date(s);
+                    (s as any) = e;
+                    (e as any) = tmp;
+                  }
+
                   let conflict = false;
                   for (let d = new Date(s); d < e; d.setDate(d.getDate() + 1)) {
-                    if (bookedSet.has(dateToYMD(new Date(d)))) { conflict = true; break; }
+                    if (bookedSet.has(dateToYMD(new Date(d)))) {
+                      conflict = true;
+                      break;
+                    }
                   }
-                  if (conflict) setRange(null); else setRange([s, e]);
+
+                  if (conflict) setRange(null);
+                  else setRange([s, e]);
                 } else if (val instanceof Date) {
                   const clicked = new Date(val);
                   clicked.setHours(0, 0, 0, 0);
-                  if (disabledSet.has(dateToYMD(clicked))) { setRange(null); return; }
+
+                  if (disabledSet.has(dateToYMD(clicked))) {
+                    setRange(null);
+                    return;
+                  }
+
                   const next = new Date(clicked);
                   next.setDate(next.getDate() + 1);
                   next.setHours(0, 0, 0, 0);
-                  if (arrivalSet.has(dateToYMD(next)) && !bookedSet.has(dateToYMD(next))) setRange([clicked, next]); else setRange([clicked]);
+
+                  if (arrivalSet.has(dateToYMD(next)) && !bookedSet.has(dateToYMD(next)))
+                    setRange([clicked, next]);
+                  else setRange([clicked]);
                 } else {
                   setRange(null);
                 }
@@ -397,8 +441,10 @@ export default function AvailabilityCalendar() {
             Sélectionnez vos dates d&apos;arrivée et de départ sur le calendrier.
           </p>
           <div className="text-xs text-gray-500 space-y-1">
-            <p>◾️◾️  <strong>Cases grises</strong> : nuits non disponibles).</p>
-            <p> ◾️◽️<strong>Cases moitié grises</strong> : Checkout à 12h.</p>
+            <p>◾️◾️ <strong>Cases grises</strong> : nuits non disponibles).</p>
+            <p>
+              ◾️◽️<strong>Cases moitié grises</strong> : Checkout à 12h.
+            </p>
           </div>
         </div>
 
@@ -413,7 +459,6 @@ export default function AvailabilityCalendar() {
                 className="mt-1 block w-full border rounded-md px-3 py-2 bg-white"
               />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700">Date de départ</label>
               <input
@@ -423,7 +468,6 @@ export default function AvailabilityCalendar() {
                 className="mt-1 block w-full border rounded-md px-3 py-2 bg-white"
               />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700">Prix total</label>
               <input
@@ -437,19 +481,39 @@ export default function AvailabilityCalendar() {
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">Nom</label>
-              <input type="text" value={nom} onChange={(e) => setNom(e.target.value)} className="mt-1 block w-full border rounded-md px-3 py-2" />
+              <input
+                type="text"
+                value={nom}
+                onChange={(e) => setNom(e.target.value)}
+                className="mt-1 block w-full border rounded-md px-3 py-2"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Prénom</label>
-              <input type="text" value={prenom} onChange={(e) => setPrenom(e.target.value)} className="mt-1 block w-full border rounded-md px-3 py-2" />
+              <input
+                type="text"
+                value={prenom}
+                onChange={(e) => setPrenom(e.target.value)}
+                className="mt-1 block w-full border rounded-md px-3 py-2"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Téléphone</label>
-              <input type="tel" value={tel} onChange={(e) => setTel(e.target.value)} className="mt-1 block w-full border rounded-md px-3 py-2" />
+              <input
+                type="tel"
+                value={tel}
+                onChange={(e) => setTel(e.target.value)}
+                className="mt-1 block w-full border rounded-md px-3 py-2"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Adresse mail</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 block w-full border rounded-md px-3 py-2" />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="mt-1 block w-full border rounded-md px-3 py-2"
+              />
             </div>
           </div>
 
@@ -506,7 +570,10 @@ export default function AvailabilityCalendar() {
                             if (!isFormValid) return Promise.reject();
                             return actions.order.create({
                               purchase_units: [{
-                                amount: { value: finalPrice.toFixed(2), currency_code: "EUR" },
+                                amount: {
+                                  value: finalPrice.toFixed(2),
+                                  currency_code: "EUR"
+                                },
                                 description: `Séjour The Tiny Home - ${nights} nuit(s)`,
                               }],
                               intent: 'CAPTURE'
@@ -523,12 +590,20 @@ export default function AvailabilityCalendar() {
                               const response = await fetch(`${API_BASE_URL}/api/paypal/complete`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ orderId: data.orderID, reservationData: { nom, prenom, tel, email, range: normalizedRange, nights, finalPrice } }),
+                                body: JSON.stringify({
+                                  orderId: data.orderID,
+                                  reservationData: { nom, prenom, tel, email, range: normalizedRange, nights, finalPrice }
+                                }),
                               });
+
                               const json = await response.json();
-                              if (response.ok && json.success) alert(`Paiement confirmé ! Un mail de confirmation vous a été envoyé.`);
-                              else alert(`Erreur : ${json.message}`);
-                            } catch (err) { alert('Erreur lors du traitement du paiement.'); }
+                              if (response.ok && json.success)
+                                alert(`Paiement confirmé ! Un mail de confirmation vous a été envoyé.`);
+                              else
+                                alert(`Erreur : ${json.message}`);
+                            } catch (err) {
+                              alert('Erreur lors du traitement du paiement.');
+                            }
                           }}
                         />
                       </div>
