@@ -216,8 +216,23 @@ export default function AvailabilityCalendar() {
   const { nights, price, discountPercent, discountAmount, finalPrice } = calcNightsAndPrice(range);
 
   const [isRulesAccepted, setIsRulesAccepted] = useState(false);
+
+  // Fonction pour vérifier si le séjour est en juillet ou août
+  function isInJulyOrAugust(range: Date[] | null): boolean {
+    if (!range || range.length !== 2) return false;
+    const start = new Date(range[0]);
+    const end = new Date(range[1]);
+    
+    for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+      const month = d.getMonth();
+      if (month === 6 || month === 7) { // 6 = juillet, 7 = août
+        return true;
+      }
+    }
+    return false;
+  }
   
-  // Validation pour le paiement (avec dates obligatoires)
+  // Validation pour le paiement (avec dates obligatoires + règle juillet/août)
   const isFormValid =
     nom.trim() !== '' &&
     prenom.trim() !== '' &&
@@ -227,7 +242,8 @@ export default function AvailabilityCalendar() {
     range !== null &&
     range.length === 2 &&
     nights > 0 &&
-    isRulesAccepted;
+    isRulesAccepted &&
+    !(isInJulyOrAugust(range) && nights < 3);
 
   function validateForm() {
     setFormError(null);
@@ -238,6 +254,12 @@ export default function AvailabilityCalendar() {
     if (!tel.trim()) return setFormError('Le numéro de téléphone est requis.');
     if (!range || range.length !== 2 || nights <= 0) return setFormError('Veuillez sélectionner une plage de dates valide (au moins 1 nuit).');
     if (!isRulesAccepted) return setFormError('Vous devez accepter le règlement intérieur pour réserver.');
+    
+    // Vérification de la règle juillet/août
+    if (isInJulyOrAugust(range) && nights < 3) {
+      return setFormError('⚠️ Pour les séjours en juillet et août, la réservation doit être d\'au moins 3 nuits.');
+    }
+    
     if (range && range.length === 2) {
       const s = new Date(range[0]);
       const e = new Date(range[1]);
@@ -289,7 +311,7 @@ export default function AvailabilityCalendar() {
     ].join('\n');
   }
 
-function buildMailtoLink() {
+  function buildMailtoLink() {
     const subject = `Demande de contact - The Tiny Home ${prenom || nom ? `(${prenom} ${nom})` : ''}`;
     const body = buildMailBody();
     return `mailto:${TARGET_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -393,6 +415,22 @@ function buildMailtoLink() {
             />
           </div>
         </div>
+
+        {/* Message permanent pour la règle juillet/août */}
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-center">
+          <p className="text-sm font-medium text-blue-800">
+            ☀️ Réservation minimum en juillet et août : 3 nuits
+          </p>
+        </div>
+
+        {/* Message dynamique si dates sélectionnées en juillet/août avec moins de 3 nuits */}
+        {range && nights > 0 && nights < 3 && isInJulyOrAugust(range) && (
+          <div className="mb-4 p-3 bg-orange-50 border border-orange-300 rounded-md text-center">
+            <p className="text-sm font-semibold text-orange-700">
+              ⚠️ Attention : Pour les séjours en juillet et août, la réservation minimum est de 3 nuits.
+            </p>
+          </div>
+        )}
 
         <div className="mb-6 text-center space-y-2">
           <p className="text-sm text-gray-600">
