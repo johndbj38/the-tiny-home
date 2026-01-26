@@ -216,6 +216,8 @@ export default function AvailabilityCalendar() {
   const { nights, price, discountPercent, discountAmount, finalPrice } = calcNightsAndPrice(range);
 
   const [isRulesAccepted, setIsRulesAccepted] = useState(false);
+  
+  // Validation pour le paiement (avec dates obligatoires)
   const isFormValid =
     nom.trim() !== '' &&
     prenom.trim() !== '' &&
@@ -254,38 +256,47 @@ export default function AvailabilityCalendar() {
   }
 
   function buildMailBody() {
-    if (!range || range.length !== 2) return '';
-    const startStr = formatDate(range[0]);
-    const endStr = formatDate(range[1]);
+    const baseInfo = [
+      'Demande de contact - The Tiny Home',
+      '',
+      `Nom : ${nom || 'Non renseigné'}`,
+      `Prénom : ${prenom || 'Non renseigné'}`,
+      `Téléphone : ${tel || 'Non renseigné'}`,
+      `Adresse e-mail : ${email || 'Non renseigné'}`,
+      '',
+    ];
+
+    if (range && range.length === 2) {
+      const startStr = formatDate(range[0]);
+      const endStr = formatDate(range[1]);
+      return [
+        ...baseInfo,
+        'DÉTAILS DU SÉJOUR SÉLECTIONNÉ :',
+        `Arrivée : ${startStr}`,
+        `Départ : ${endStr}`,
+        `Nuits : ${nights}`,
+        `Prix total : ${finalPrice.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}`,
+        '',
+        'Merci de revenir vers moi au plus vite.',
+      ].join('\n');
+    }
+
     return [
-      'Demande de réservation - The Tiny Home',
+      ...baseInfo,
+      'Message : [Veuillez écrire votre question ici]',
       '',
-      `Nom : ${nom}`,
-      `Prénom : ${prenom}`,
-      `Téléphone : ${tel}`,
-      `Adresse e-mail : ${email}`,
-      '',
-      `Arrivée : ${startStr}`,
-      `Départ : ${endStr}`,
-      `Nuits : ${nights}`,
-      `Prix total (avant remise) : ${price.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}`,
-      discountPercent > 0 ? `Remise appliquée : ${discountPercent}% (-${discountAmount.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })})` : 'Remise appliquée : —',
-      `Prix total à payer : ${finalPrice.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}`,
-      '',
-      'Merci de revenir vers moi au plus vite pour confirmer la réservation.',
+      'Merci de revenir vers moi au plus vite.',
     ].join('\n');
   }
 
   function buildMailtoLink() {
-    const subject = `Demande de réservation - The Tiny Home (${prenom} ${nom})`;
+    const subject = `Demande de contact - The Tiny Home ${prenom ? '(' + prenom + ' ' + nom + ')' : ''}`;
     const body = buildMailBody();
     const params = new URLSearchParams({ subject, body });
     return `mailto:${TARGET_EMAIL}?${params.toString()}`;
   }
 
   function openMailClient() {
-    setFormError(null);
-    if (!validateForm()) return;
     const mailto = buildMailtoLink();
     window.location.href = mailto;
   }
@@ -353,62 +364,28 @@ export default function AvailabilityCalendar() {
               selectRange={true}
               locale="fr-FR"
               onChange={(val: Date | Date[] | null) => {
-                if (loading) {
-                  return;
-                }
-
+                if (loading) return;
                 if (Array.isArray(val)) {
                   const [start, end] = val;
-                  if (!start || !end) {
-                    setRange(null);
-                    return;
-                  }
-
+                  if (!start || !end) { setRange(null); return; }
                   const s = new Date(start);
                   const e = new Date(end);
                   s.setHours(0, 0, 0, 0);
                   e.setHours(0, 0, 0, 0);
-
-                  if (e < s) {
-                    const tmp = new Date(s);
-                    (s as any) = e;
-                    (e as any) = tmp;
-                  }
-
+                  if (e < s) { const tmp = new Date(s); (s as any) = e; (e as any) = tmp; }
                   let conflict = false;
                   for (let d = new Date(s); d < e; d.setDate(d.getDate() + 1)) {
-                    const ymd = dateToYMD(new Date(d));
-                    if (bookedSet.has(ymd)) {
-                      conflict = true;
-                      break;
-                    }
+                    if (bookedSet.has(dateToYMD(new Date(d)))) { conflict = true; break; }
                   }
-
-                  if (conflict) {
-                    setRange(null);
-                  } else {
-                    setRange([s, e]);
-                  }
+                  if (conflict) setRange(null); else setRange([s, e]);
                 } else if (val instanceof Date) {
                   const clicked = new Date(val);
                   clicked.setHours(0, 0, 0, 0);
-                  const ymd = dateToYMD(clicked);
-
-                  if (disabledSet.has(ymd)) {
-                    setRange(null);
-                    return;
-                  }
-
+                  if (disabledSet.has(dateToYMD(clicked))) { setRange(null); return; }
                   const next = new Date(clicked);
                   next.setDate(next.getDate() + 1);
                   next.setHours(0, 0, 0, 0);
-                  const nextYmd = dateToYMD(next);
-
-                  if (arrivalSet.has(nextYmd) && !bookedSet.has(nextYmd)) {
-                    setRange([clicked, next]);
-                  } else {
-                    setRange([clicked]);
-                  }
+                  if (arrivalSet.has(dateToYMD(next)) && !bookedSet.has(dateToYMD(next))) setRange([clicked, next]); else setRange([clicked]);
                 } else {
                   setRange(null);
                 }
@@ -529,38 +506,21 @@ export default function AvailabilityCalendar() {
                           disabled={!isFormValid}
                           forceReRender={[finalPrice, nights, isFormValid]}
                           createOrder={(data, actions) => {
-                            if (!isFormValid) {
-                              alert('Merci de remplir toutes vos informations avant de payer.');
-                              return Promise.reject();
-                            }
+                            if (!isFormValid) return Promise.reject();
                             return actions.order.create({
-                              purchase_units: [
-                                {
-                                  amount: {
-                                    value: finalPrice.toFixed(2),
-                                    currency_code: "EUR",
-                                  },
-                                  description: `Séjour The Tiny Home - ${nights} nuit(s)`,
-                                },
-                              ],
+                              purchase_units: [{
+                                amount: { value: finalPrice.toFixed(2), currency_code: "EUR" },
+                                description: `Séjour The Tiny Home - ${nights} nuit(s)`,
+                              }],
                               intent: 'CAPTURE'
                             });
                           }}
                           onApprove={async (data, actions) => {
                             if (!actions) return;
                             try {
-                              const order = await actions.order!.capture();
+                              await actions.order!.capture();
                               const normalizedRange = Array.isArray(range) && range.length === 2
-                                ? [
-                                    (() => {
-                                      const d = new Date(range[0] as Date);
-                                      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                                    })(),
-                                    (() => {
-                                      const d = new Date(range[1] as Date);
-                                      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                                    })(),
-                                  ]
+                                ? [dateToYMD(range[0]), dateToYMD(range[1])]
                                 : range;
 
                               const response = await fetch(`${API_BASE_URL}/api/paypal/complete`, {
@@ -568,16 +528,10 @@ export default function AvailabilityCalendar() {
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ orderId: data.orderID, reservationData: { nom, prenom, tel, email, range: normalizedRange, nights, finalPrice } }),
                               });
-
                               const json = await response.json();
-                              if (response.ok && json.success) {
-                                alert(`Paiement confirmé ! Un mail de confirmation vous a été envoyé. Vérifiez vos spams.`);
-                              } else {
-                                alert(`Erreur : ${json.message}`);
-                              }
-                            } catch (err) {
-                              alert('Erreur lors du traitement du paiement.');
-                            }
+                              if (response.ok && json.success) alert(`Paiement confirmé ! Un mail de confirmation vous a été envoyé.`);
+                              else alert(`Erreur : ${json.message}`);
+                            } catch (err) { alert('Erreur lors du traitement du paiement.'); }
                           }}
                         />
                       </div>
@@ -621,8 +575,7 @@ export default function AvailabilityCalendar() {
                     <button
                       type="button"
                       onClick={openMailClient}
-                      className="w-full bg-green-600 text-white text-center py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
-                      disabled={!isFormValid}
+                      className="w-full bg-green-600 text-white text-center py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg"
                     >
                       ✉️ Nous contacter par Email
                     </button>
@@ -664,29 +617,20 @@ export default function AvailabilityCalendar() {
             >
               ×
             </button>
-
             <h4 className="text-lg font-semibold mb-4">Règlement intérieur</h4>
-
             <div className="max-h-80 overflow-y-auto text-sm text-gray-700 space-y-3">
               <p className="font-semibold">⚠️ RÈGLEMENT INTÉRIEUR</p>
-              <p>Afin de garantir le confort et la tranquillité de tous, merci de respecter les règles suivantes :</p>
               <ul className="list-disc list-inside space-y-1">
                 <li>Aucune fête ni événement n'est autorisé.</li>
-                <li>Merci de respecter le calme, en particulier sur la terrasse du SPA, après 22h.</li>
-                <li>Aucune personne extérieure non prévue dans la réservation n'est autorisée.</li>
-                <li>La vaisselle doit être propre et rangée à votre départ (un lave-vaisselle est à votre disposition).</li>
-                <li>Merci de retirer vos chaussures à l'intérieur du logement.</li>
-                <li>Il est strictement interdit de fumer à l'intérieur du logement.</li>
+                <li>Merci de respecter le calme après 22h.</li>
+                <li>Aucune personne extérieure non prévue n'est autorisée.</li>
+                <li>La vaisselle doit être propre et rangée à votre départ.</li>
+                <li>Merci de retirer vos chaussures à l'intérieur.</li>
+                <li>Il est strictement interdit de fumer à l'intérieur.</li>
                 <li>Les animaux de compagnie ne sont pas admis.</li>
-                <li>En cas de perte des clés : indemnisation forfaitaire de <strong>40 €</strong>.</li>
-                <li>Merci de respecter le linge de maison (draps et serviettes fournis) : indemnisation de <strong>50 €</strong> en cas de perte ou de détérioration.</li>
-                <li>Un nettoyage anormalement important pourra entraîner une indemnisation de <strong>150 €</strong>.</li>
-                <li>Poubelles non sorties : indemnisation de <strong>15 €</strong> (le conteneur se trouve en bas de la rue, près de la route principale).</li>
-                <li>En cas de dégâts ou de non-respect du règlement intérieur : indemnisation pouvant aller jusqu'à <strong>300 €</strong>.</li>
               </ul>
-              <p className="pt-2">❤️ Merci pour votre compréhension et votre coopération.</p>
+              <p className="pt-2">❤️ Merci pour votre compréhension.</p>
             </div>
-
             <div className="mt-4 flex justify-end">
               <button
                 type="button"
