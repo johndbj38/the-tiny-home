@@ -617,12 +617,15 @@ export default function AvailabilityCalendar() {
                   </div>
 
                   <div className="space-y-2">
-                    <p className="text-center text-xs font-medium text-gray-600">Une question ? Une demande spéciale ?</p>
+                   <p className="text-center text-xs font-medium text-gray-600">Une question ? Une demande spéciale ?</p>
                     <button
                       type="button"
-                      onClick={openMailClient}
-                      className="w-full bg-green-600 text-white text-center py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
-                      disabled={!isFormValid}
+                      onClick={() => {
+                        setFormError(null);
+                        const mailto = buildMailtoLink();
+                        window.location.href = mailto;
+                      }}
+                      className="w-full bg-green-600 text-white text-center py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg"
                     >
                       ✉️ Nous contacter par Email
                     </button>
