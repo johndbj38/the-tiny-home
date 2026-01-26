@@ -460,7 +460,26 @@ export default function AvailabilityCalendar() {
             </p>
           </div>
         )}
-
+        
+{/* --- NOUVEL EMPLACEMENT DU BLOC DÉTAILS --- */}
+        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="text-sm text-gray-700">
+            <p className="font-semibold mb-2">📊 Détails du séjour :</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+              <span>Prix/nuit : <strong>{displayedPricePerNight.toLocaleString('fr-FR')}€</strong></span>
+              <span>Nuits : <strong>{nights}</strong></span>
+              {discountPercent > 0 && (
+                <span>Remise : <strong>{discountPercent}%</strong></span>
+              )}
+            </div>
+            {nights > 0 && (
+              <p className="mt-2 text-xs text-yellow-800 font-medium">
+                ℹ️ * Le tarif affiché sur Airbnb est à titre indicatif incluant les frais de la plateforme.
+              </p>
+            )}
+          </div>
+        </div>
+        
         <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-md text-center">
           <p className="text-sm font-medium text-blue-800">
             Sélectionnez vos dates d&apos;arrivée et de départ sur le calendrier.
@@ -676,25 +695,6 @@ export default function AvailabilityCalendar() {
                     >
                       ✉️ Nous contacter par Email
                     </button>
-                  </div>
-                </div>
-
-                {/* Détails du séjour */}
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <div className="text-sm text-gray-700">
-                    <p className="font-semibold mb-2">📊 Détails du séjour :</p>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
-                      <span>Prix/nuit : <strong>{displayedPricePerNight.toLocaleString('fr-FR')}€</strong></span>
-                      <span>Nuits : <strong>{nights}</strong></span>
-                      {discountPercent > 0 && (
-                        <span>Remise : <strong>{discountPercent}%</strong></span>
-                      )}
-                    </div>
-                    {nights > 0 && (
-                      <p className="mt-2 text-xs text-yellow-800 font-medium">
-                        ℹ️ * Le tarif affiché sur Airbnb est à titre indicatif incluant les frais de la plateforme.
-                      </p>
-                    )}
                   </div>
                 </div>
               </div>
