@@ -634,18 +634,15 @@ export default function AvailabilityCalendar() {
                     </a>
                   </div>
 
-                  <div className="space-y-2">
+                 <div className="space-y-2">
                     <p className="text-center text-xs font-medium text-gray-600">Une question ? Une demande spéciale ?</p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const mailto = buildMailtoLink();
-                        window.location.href = mailto;
-                      }}
-                      className="w-full bg-green-600 text-white text-center py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg"
+                    <a
+                      href={buildMailtoLink()}
+                      className="block w-full bg-green-600 text-white text-center py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg"
+                      style={{ cursor: 'pointer', pointerEvents: 'auto' }}
                     >
                       ✉️ Nous contacter par Email
-                    </button>
+                    </a>
                   </div>
                 </div>
 
