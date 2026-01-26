@@ -219,9 +219,10 @@ export default function AvailabilityCalendar() {
       }
     }
 
-    let discountPercent = 0;
-    if (nights >= 7) discountPercent = 15;
-    else if (nights >= 3) discountPercent = 10;
+let discountPercent = 0;
+if (nights >= 7) discountPercent = 15;
+else if (nights >= 3) discountPercent = 10;
+else if (nights >= 2) discountPercent = 5;
 
     const discountAmountCents = Math.round((totalPrice * discountPercent / 100) * 100);
     const discountAmountFinal = discountAmountCents / 100;
