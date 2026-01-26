@@ -254,22 +254,7 @@ export default function AvailabilityCalendar() {
   }
 
   function buildMailBody() {
-    // Si pas de dates sélectionnées, email de contact simple
-    if (!range || range.length !== 2 || nights === 0) {
-      return [
-        'Demande de contact - The Tiny Home',
-        '',
-        `Nom : ${nom || '(non renseigné)'}`,
-        `Prénom : ${prenom || '(non renseigné)'}`,
-        `Téléphone : ${tel || '(non renseigné)'}`,
-        `Adresse e-mail : ${email || '(non renseigné)'}`,
-        '',
-        'Message : (Veuillez compléter votre demande ici)',
-        '',
-      ].join('\n');
-    }
-
-    // Sinon, email de réservation complet
+    if (!range || range.length !== 2) return '';
     const startStr = formatDate(range[0]);
     const endStr = formatDate(range[1]);
     return [
@@ -291,11 +276,8 @@ export default function AvailabilityCalendar() {
     ].join('\n');
   }
 
- function buildMailtoLink() {
-    const hasReservation = range && range.length === 2 && nights > 0;
-    const subject = hasReservation 
-      ? `Demande de réservation - The Tiny Home (${prenom || 'Client'} ${nom || ''})`.trim()
-      : `Demande de contact - The Tiny Home`;
+  function buildMailtoLink() {
+    const subject = `Demande de réservation - The Tiny Home (${prenom} ${nom})`;
     const body = buildMailBody();
     const params = new URLSearchParams({ subject, body });
     return `mailto:${TARGET_EMAIL}?${params.toString()}`;
@@ -600,7 +582,7 @@ export default function AvailabilityCalendar() {
                         />
                       </div>
                     </div>
-                 </PayPalScriptProvider>
+                  </PayPalScriptProvider>
                 </div>
 
                 {/* Séparateur */}
@@ -612,32 +594,38 @@ export default function AvailabilityCalendar() {
 
                 {/* Option 2 & 3: Airbnb et Contact */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* BOUTON AIRBNB */}
                   <div className="space-y-2">
                     <p className="text-center text-xs font-medium text-gray-600">Réserver via la plateforme</p>
                     <a
-                      href="https://www.airbnb.fr/rooms/746228202767512240"
+                      href={isFormValid ? AIRBNB_LINK : undefined}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={(e) => {
+                        if (!isFormValid) {
+                          e.preventDefault();
+                          alert('Merci de remplir toutes vos informations avant de réserver sur Airbnb.');
+                        }
+                      }}
                       className={`block text-white text-center py-3 px-4 rounded-lg font-semibold transition-all duration-200 shadow-md hover:shadow-lg ${
                         !isFormValid ? 'opacity-50 pointer-events-none' : ''
                       }`}
                       style={{ backgroundColor: '#FF5A5F' }}
                     >
                       🎒 Réserver sur Airbnb
+                      <span className="block text-xs font-normal mt-1">≈ {airbnbPriceStr} (frais inclus)</span>
                     </a>
                   </div>
 
-                  {/* BOUTON EMAIL - TOTALEMENT INDÉPENDANT */}
                   <div className="space-y-2">
                     <p className="text-center text-xs font-medium text-gray-600">Une question ? Une demande spéciale ?</p>
-                    <a
-                      href={`mailto:thetinyhome73@gmail.com?subject=Contact%20The%20Tiny%20Home&body=Bonjour,%20je%20souhaiterais%20avoir%20des%20informations...`}
-                      className="block w-full bg-green-600 text-white text-center py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg"
-                      style={{ opacity: 1, pointerEvents: 'auto', cursor: 'pointer' }}
+                    <button
+                      type="button"
+                      onClick={openMailClient}
+                      className="w-full bg-green-600 text-white text-center py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
+                      disabled={!isFormValid}
                     >
                       ✉️ Nous contacter par Email
-                    </a>
+                    </button>
                   </div>
                 </div>
 
@@ -646,14 +634,22 @@ export default function AvailabilityCalendar() {
                   <div className="text-sm text-gray-700">
                     <p className="font-semibold mb-2">📊 Détails du séjour :</p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
-                      <span>Prix/nuit : <strong>{displayedPricePerNight}€</strong></span>
+                      <span>Prix/nuit : <strong>{displayedPricePerNight.toLocaleString('fr-FR')}€</strong></span>
                       <span>Nuits : <strong>{nights}</strong></span>
                       {discountPercent > 0 && (
                         <span>Remise : <strong>{discountPercent}%</strong></span>
                       )}
                     </div>
+                    {nights > 0 && (
+                      <p className="mt-2 text-xs text-yellow-800 font-medium">
+                        ℹ️ * Le tarif affiché sur Airbnb est à titre indicatif incluant les frais de la plateforme.
+                      </p>
+                    )}
                   </div>
                 </div>
+              </div>
+            );
+          })()}
         </form>
       </div>
 
