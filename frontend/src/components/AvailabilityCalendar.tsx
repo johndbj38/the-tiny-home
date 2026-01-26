@@ -289,11 +289,11 @@ export default function AvailabilityCalendar() {
     ].join('\n');
   }
 
-  function buildMailtoLink() {
-    const subject = `Demande de contact - The Tiny Home ${prenom ? '(' + prenom + ' ' + nom + ')' : ''}`;
+function buildMailtoLink() {
+    const subject = `Demande de contact - The Tiny Home ${prenom || nom ? `(${prenom} ${nom})` : ''}`;
     const body = buildMailBody();
-    const params = new URLSearchParams({ subject, body });
-    return `mailto:${TARGET_EMAIL}?${params.toString()}`;
+    return `mailto:${TARGET_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  }
   }
 
   function openMailClient() {
