@@ -30,7 +30,7 @@ const SPECIAL_PRICES = [
 // ============================================
 // 🔧 CONFIGURATION DE LA FENÊTRE DE RÉSERVATION
 // ============================================
-const MAX_BOOKING_MONTHS = 5; // Nombre de mois maximum pour les réservations futures
+const MAX_BOOKING_MONTHS = 6; // Nombre de mois maximum pour les réservations futures
 // ============================================
 
 const TARGET_EMAIL = 'thetinyhome73@gmail.com';
