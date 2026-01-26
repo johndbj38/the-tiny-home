@@ -431,16 +431,6 @@ export default function AvailabilityCalendar() {
           </p>
         )}
 
-        {/* Message d'information sur la fenêtre de réservation */}
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-center">
-          <p className="text-sm font-medium text-blue-800">
-            📅 Réservations ouvertes jusqu'au {formatDate(maxFuture)}
-          </p>
-          <p className="text-xs text-gray-600 mt-1">
-            Les dates au-delà sont grisées et seront disponibles progressivement.
-          </p>
-        </div>
-
         <div className="flex justify-center mb-6">
           <div className="w-full max-w-md relative">
             {loading && (
