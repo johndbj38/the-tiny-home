@@ -675,40 +675,15 @@ else if (nights >= 2) discountPercent = 5;
                   <div className="flex-grow border-t border-gray-200"></div>
                 </div>
 
-                {/* Option 2 & 3: Airbnb et Contact */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <p className="text-center text-xs font-medium text-gray-600">Réserver via la plateforme</p>
-                    <a
-                      href={isFormValid ? AIRBNB_LINK : undefined}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => {
-                        if (!isFormValid) {
-                          e.preventDefault();
-                          alert('Merci de remplir toutes vos informations avant de réserver sur Airbnb.');
-                        }
-                      }}
-                      className={`block text-white text-center py-3 px-4 rounded-lg font-semibold transition-all duration-200 shadow-md hover:shadow-lg ${
-                        !isFormValid ? 'opacity-50 pointer-events-none' : ''
-                      }`}
-                      style={{ backgroundColor: '#FF5A5F' }}
-                    >
-                      🎒 Réserver sur Airbnb
-                      <span className="block text-xs font-normal mt-1">≈ {airbnbPriceStr} (frais inclus)</span>
-                    </a>
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="text-center text-xs font-medium text-gray-600">Une question ? Une demande spéciale ?</p>
-                    <button
-                      type="button"
-                      onClick={openMailClient}
-                      className="w-full bg-green-600 text-white text-center py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg"
-                    >
-                      ✉️ Nous contacter par Email
-                    </button>
-                  </div>
+                <div className="space-y-2">
+                  <p className="text-center text-xs font-medium text-gray-600">Une question ? Une demande spéciale ?</p>
+                  <button
+                    type="button"
+                    onClick={openMailClient}
+                    className="w-full bg-green-600 text-white text-center py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg"
+                  >
+                    ✉️ Nous contacter par Email
+                  </button>
                 </div>
               </div>
             );
