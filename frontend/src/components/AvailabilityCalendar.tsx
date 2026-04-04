@@ -20,6 +20,7 @@ const PRICE_WEEKEND = 149;  // € / nuit du weekend (nuits ven-sam et sam-dim)
 // Définition des prix spéciaux par date (reconduits tous les ans)
 // Format : mois (1-12) et jour
 const SPECIAL_PRICES = [
+  { month: 4, startDay: 13, endDay: 13, price: 1 }, // TEST
   { month: 12, startDay: 24, endDay: 26, price: 200 }, // Noël (24-26 décembre)
   { month: 12, startDay: 31, endDay: 31, price: 250 }, // Nouvel an (31 décembre)
   { month: 1, startDay: 1, endDay: 1, price: 250 },    // Nouvel an (1er janvier)
