@@ -9,7 +9,8 @@ import {
   UtensilsCrossed,
   Store,
   Car,
-  Mountain
+  Mountain,
+  Tv
 } from 'lucide-react';
 
 const Features = () => {
@@ -188,6 +189,11 @@ const Features = () => {
           </ul>
         </div>
       ),
+    {
+      icon: <Tv className="w-8 h-8 text-green-600" />,
+      title: 'Cinéma Privé',
+      description: 'Vivez une expérience cinéma unique, disponible 24h/24. Installez-vous confortablement et projetez le film de votre choix comme si vous aviez privatisé votre propre salle de cinéma. Grâce à la Chromecast intégrée, connectez simplement votre compte Netflix, Prime Video, Disney+ ou toute autre plateforme de streaming pour profiter de vos contenus préférés sur grand écran.',
+    },
     },
   ];
 
