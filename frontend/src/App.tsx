@@ -21,7 +21,7 @@ function App() {
     'https://imgur.com/fAFN2yl.jpg',
     'https://imgur.com/HVHOIir.jpg',
     'https://imgur.com/u6jNTR1.jpg',
-    'https://imgur.com/AfZMEJ4.mp4',
+    'https://imgur.com/hMwQB7d.jpg',
     'https://imgur.com/9ZELmze.jpg',
   ];
 
