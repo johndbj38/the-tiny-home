@@ -15,7 +15,7 @@ function App() {
     'https://i.imgur.com/HWvqhhM.jpg',
     'https://i.imgur.com/m6rM8W2.jpg',
     'https://imgur.com/vDQHmxR.jpg',
-    'https://imgur.com/qQjCsKl.jpg',
+    'https://imgur.com/Cl6Rh0b.jpg',
     'https://i.imgur.com/5gSq0r6.jpg',
     'https://imgur.com/fAFN2yl.jpg',
     'https://imgur.com/CnU6pdZ.jpg',
