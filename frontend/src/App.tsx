@@ -110,10 +110,11 @@ function App() {
             alt="The Tiny Home - Lac du Bourget"
             className="w-full max-w-md md:max-w-1xl mb-6 px-2"
           />
-          <p className="text-3xl md:text-4xl mb-8 text-white drop-shadow-lg font-light italic">
-            Séjour romantique en Duo entre lac et montagne
-          </p>
-
+        <p className="text-3xl md:text-4xl mb-8 text-white drop-shadow-lg font-light italic">
+  Séjour romantique en Duo 
+  entre lac et montagne
+</p>
+     
           <div className="mt-10 text-center px-4">
             {/* 3 boutons verticaux */}
             <div className="flex flex-col items-center gap-3 max-w-xs mx-auto">
@@ -162,7 +163,7 @@ function App() {
             className="w-full h-full object-contain"
           />
         </div>
-
+      
         <div className="flex flex-wrap gap-8 relative z-10">
           {/* Emplacement stratégique */}
           <div className="flex-1 min-w-[300px]">
@@ -235,18 +236,6 @@ function App() {
               </div>
             </div>
           ))}
-        </div>
-
-        {/* Ajout des vidéos à la suite */}
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8">
-          <video controls className="w-full rounded-lg shadow-lg" >
-            <source src="https://i.imgur.com/FGPPPIM.mp4" type="video/mp4" />
-            Votre navigateur ne supporte pas la lecture de vidéos.
-          </video>
-          <video controls className="w-full rounded-lg shadow-lg" >
-            <source src="https://i.imgur.com/AfZMEJ4.mp4" type="video/mp4" />
-            Votre navigateur ne supporte pas la lecture de vidéos.
-          </video>
         </div>
       </div>
 
