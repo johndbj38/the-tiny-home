@@ -52,8 +52,8 @@ const Features = () => {
     },
     {
       icon: <Bed className="w-8 h-8 text-green-600" />,
-      title: 'Coin Nuit Cosy',
-      description: 'Un lit Queen size pour des nuits paisibles',
+      title: 'Coin Nuit Cosy & Cinéma Privé',
+      description: 'Un lit Queen size pour des nuits paisibles. 🎬 Vivez une expérience cinéma unique, disponible 24h/24. Grâce à la Chromecast intégrée, connectez votre compte Netflix, Prime Video, Disney+ ou toute autre plateforme de streaming pour profiter de vos contenus préférés sur grand écran.',
     },
     {
       icon: <Car className="w-8 h-8 text-green-600" />,
@@ -189,11 +189,6 @@ const Features = () => {
           </ul>
         </div>
       ),
-    },
-    {
-      icon: <Tv className="w-8 h-8 text-green-600" />,
-      title: 'Cinéma Privé',
-      description: 'Vivez une expérience cinéma unique, disponible 24h/24. Installez-vous confortablement et projetez le film de votre choix comme si vous aviez privatisé votre propre salle de cinéma. Grâce à la Chromecast intégrée, connectez simplement votre compte Netflix, Prime Video, Disney+ ou toute autre plateforme de streaming pour profiter de vos contenus préférés sur grand écran.',
     },
   ];
 
